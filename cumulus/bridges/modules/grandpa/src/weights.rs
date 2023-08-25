@@ -73,9 +73,7 @@ impl<T: frame_system::Config> WeightInfo for BridgeWeight<T> {
 	/// Proof: BridgeRialtoGrandpa BestFinalized (max_values: Some(1), max_size: Some(36), added:
 	/// 531, mode: MaxEncodedLen)
 	///
-	/// Storage: BridgeRialtoGrandpa CurrentAuthoritySet (r:1 w:0)
-	///
-	/// Proof: BridgeRialtoGrandpa CurrentAuthoritySet (max_values: Some(1), max_size: Some(209),
+	/// Storage: BridgeRialtoGrandpa
 	/// added: 704, mode: MaxEncodedLen)
 	///
 	/// Storage: BridgeRialtoGrandpa ImportedHashesPointer (r:1 w:1)
