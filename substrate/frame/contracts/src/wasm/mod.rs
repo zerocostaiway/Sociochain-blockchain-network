@@ -28,14 +28,15 @@ pub use crate::wasm::runtime::api_doc;
 pub use tests::MockExt;
 
 pub use crate::wasm::runtime::{
-	AllowDeprecatedInterface, AllowUnstableInterface, CallFlags, Environment, ReturnCode, Runtime,
-	RuntimeCosts,
+	AllowDeprecatedInterface, AllowUnstableInterface, CallFlags, Environment, Memory, ReturnCode,
+	RiscvMemory, Runtime, RuntimeCosts, WasmMemory,
 };
 
 use crate::{
 	exec::{ExecResult, Executable, ExportedFunction, Ext},
 	gas::{GasMeter, Token},
-	wasm::prepare::LoadedModule,
+	storage::meter::Diff,
+	wasm::{prepare::LoadedModule, runtime::RiscvHandler},
 	weights::WeightInfo,
 	AccountIdOf, BadOrigin, BalanceOf, CodeHash, CodeInfoOf, CodeVec, Config, Error, Event,
 	HoldReason, Pallet, PristineCode, Schedule, Weight, LOG_TARGET,
@@ -47,10 +48,9 @@ use frame_support::{
 	traits::{fungible::MutateHold, tokens::Precision::BestEffort},
 };
 use sp_core::Get;
-use sp_runtime::{DispatchError, RuntimeDebug};
+use sp_runtime::{traits::Hash, DispatchError, RuntimeDebug};
 use sp_std::prelude::*;
-use wasmi::{InstancePre, Linker, Memory, MemoryType, StackLimits, Store};
-
+use wasmi::{InstancePre, Linker, Memory as WasmiMemory, MemoryType, StackLimits, Store};
 const BYTES_PER_PAGE: usize = 64 * 1024;
 
 /// Validated Wasm module ready for execution.
@@ -118,7 +118,7 @@ pub enum Determinism {
 }
 
 impl ExportedFunction {
-	/// The wasm export name for the function.
+	/// The export name for the function.
 	fn identifier(&self) -> &str {
 		match self {
 			Self::Constructor => "deploy",
@@ -152,12 +152,28 @@ impl<T: Config> WasmBlob<T> {
 		owner: AccountIdOf<T>,
 		determinism: Determinism,
 	) -> Result<Self, (DispatchError, &'static str)> {
-		prepare::prepare::<runtime::Env, T>(
-			code.try_into().map_err(|_| (<Error<T>>::CodeTooLarge.into(), ""))?,
-			schedule,
-			owner,
-			determinism,
-		)
+		// We need to make sure that the code isn't too large.
+		let code: CodeVec<T> =
+			code.try_into().map_err(|_| (<Error<T>>::CodeTooLarge.into(), ""))?;
+
+		// Calculate deposit for storing contract code and `code_info` in two different storage
+		// items.
+		let code_len = code.len() as u32;
+		let bytes_added = code_len.saturating_add(<CodeInfo<T>>::max_encoded_len() as u32);
+		let deposit = Diff { bytes_added, items_added: 2, ..Default::default() }
+			.update_contract::<T>(None)
+			.charge_or_zero();
+		let code_info = CodeInfo { owner, deposit, determinism, refcount: 0, code_len };
+		let code_hash = T::Hashing::hash(&code);
+		let result = WasmBlob { code, code_info, code_hash };
+
+		// Only in case of a wasm blob we do validation. Otherwise we assume RISC-V and accept
+		// anything. TODO: validate RISC-V blob
+		if result.is_wasm() {
+			prepare::validate::<runtime::Env, T>(result.code.as_ref(), schedule, determinism)?;
+		}
+
+		Ok(result)
 	}
 
 	/// Remove the code from storage and refund the deposit to its owner.
@@ -195,14 +211,14 @@ impl<T: Config> WasmBlob<T> {
 	/// This is either used for later executing a contract or for validation of a contract.
 	/// When validating we pass `()` as `host_state`. Please note that such a dummy instance must
 	/// **never** be called/executed, since it will panic the executor.
-	pub fn instantiate<E, H>(
+	pub fn instantiate_wasm<E, H>(
 		code: &[u8],
 		host_state: H,
 		schedule: &Schedule<T>,
 		determinism: Determinism,
 		stack_limits: StackLimits,
 		allow_deprecated: AllowDeprecatedInterface,
-	) -> Result<(Store<H>, Memory, InstancePre), &'static str>
+	) -> Result<(Store<H>, WasmiMemory, InstancePre), &'static str>
 	where
 		E: Environment<H>,
 	{
@@ -228,7 +244,7 @@ impl<T: Config> WasmBlob<T> {
 		let qed = "We checked the limits versus our Schedule,
 					 which specifies the max amount of memory pages
 					 well below u16::MAX; qed";
-		let memory = Memory::new(
+		let memory = WasmiMemory::new(
 			&mut store,
 			MemoryType::new(memory_limits.0, Some(memory_limits.1)).expect(qed),
 		)
@@ -280,6 +296,128 @@ impl<T: Config> WasmBlob<T> {
 				},
 			}
 		})
+	}
+
+	fn is_wasm(&self) -> bool {
+		match self.code.get(0..4) {
+			Some([0x00, 0x61, 0x73, 0x6D]) => true,
+			_ => false,
+		}
+	}
+
+	fn execute_wasm<E: Ext<T = T>>(
+		self,
+		ext: &mut E,
+		function: &ExportedFunction,
+		input_data: Vec<u8>,
+	) -> ExecResult {
+		let code = self.code.as_slice();
+		let runtime = Runtime::new(ext, input_data);
+		let schedule = <T>::Schedule::get();
+		let (mut store, memory, instance) = Self::instantiate_wasm::<crate::wasm::runtime::Env, _>(
+			code,
+			runtime,
+			&schedule,
+			self.code_info.determinism,
+			StackLimits::default(),
+			match function {
+				ExportedFunction::Call => AllowDeprecatedInterface::Yes,
+				ExportedFunction::Constructor => AllowDeprecatedInterface::No,
+			},
+		)
+		.map_err(|msg| {
+			log::debug!(target: LOG_TARGET, "failed to instantiate code to wasmi: {}", msg);
+			Error::<T>::CodeRejected
+		})?;
+		store.data_mut().set_memory(memory);
+
+		// Set fuel limit for the wasmi execution.
+		// We normalize it by the base instruction weight, as its cost in wasmi engine is `1`.
+		let fuel_limit = store
+			.data_mut()
+			.ext()
+			.gas_meter_mut()
+			.gas_left()
+			.ref_time()
+			.checked_div(T::Schedule::get().instruction_weights.base as u64)
+			.ok_or(Error::<T>::InvalidSchedule)?;
+		store
+			.add_fuel(fuel_limit)
+			.expect("We've set up engine to fuel consuming mode; qed");
+
+		// Sync this frame's gas meter with the engine's one.
+		let process_result = |mut store: Store<Runtime<E, WasmMemory<E::T>>>, result| {
+			let engine_consumed_total =
+				store.fuel_consumed().expect("Fuel metering is enabled; qed");
+			let gas_meter = store.data_mut().ext().gas_meter_mut();
+			gas_meter.charge_fuel(engine_consumed_total)?;
+			store.into_data().to_execution_result(result)
+		};
+
+		// Start function should already see the correct refcount in case it will be ever inspected.
+		if let &ExportedFunction::Constructor = function {
+			E::increment_refcount(self.code_hash)?;
+		}
+
+		// Any abort in start function (includes `return` + `terminate`) will make us skip the
+		// call into the subsequent exported function. This means that calling `return` returns data
+		// from the whole contract execution.
+		match instance.start(&mut store) {
+			Ok(instance) => {
+				let exported_func = instance
+					.get_export(&store, function.identifier())
+					.and_then(|export| export.into_func())
+					.ok_or_else(|| {
+						log::error!(target: LOG_TARGET, "failed to find entry point");
+						Error::<T>::CodeRejected
+					})?;
+
+				let result = exported_func.call(&mut store, &[], &mut []);
+				process_result(store, result)
+			},
+			Err(err) => process_result(store, Err(err)),
+		}
+	}
+
+	fn execute_riscv<E: Ext<T = T>>(
+		self,
+		ext: &mut E,
+		function: &ExportedFunction,
+		input_data: Vec<u8>,
+	) -> ExecResult {
+		use sp_io::RiscvExecOutcome;
+
+		let code = self.code.as_slice();
+
+		let mut state = sp_io::RiscvState {
+			fuel_left: 0,
+			exit: false,
+			user: Runtime::<_, RiscvMemory<E::T>>::new(ext, input_data),
+		};
+
+		#[cfg(not(feature = "std"))]
+		let outcome = sp_io::riscv::execute(
+			code,
+			function.identifier(),
+			runtime::Env::handler_idx::<E>(),
+			&mut state as *mut _ as u32,
+		);
+
+		#[cfg(feature = "std")]
+		let outcome = RiscvExecOutcome::Ok;
+
+		log::debug!(target: LOG_TARGET, "riscv outcome {:?}", outcome);
+
+		let outcome = match outcome {
+			RiscvExecOutcome::Ok => Ok(()),
+			RiscvExecOutcome::OutOfGas =>
+				Err(wasmi::Error::Trap(wasmi::core::TrapCode::OutOfFuel.into())),
+			RiscvExecOutcome::Trap =>
+				Err(wasmi::Error::Trap(wasmi::core::Trap::new("Contract trapped"))),
+			RiscvExecOutcome::InvalidImage => panic!("Invalid image supplied"),
+		};
+
+		state.user.to_execution_result(outcome)
 	}
 
 	/// Create the module without checking the passed code.
@@ -344,72 +482,10 @@ impl<T: Config> Executable<T> for WasmBlob<T> {
 		function: &ExportedFunction,
 		input_data: Vec<u8>,
 	) -> ExecResult {
-		let code = self.code.as_slice();
-		// Instantiate the Wasm module to the engine.
-		let runtime = Runtime::new(ext, input_data);
-		let schedule = <T>::Schedule::get();
-		let (mut store, memory, instance) = Self::instantiate::<crate::wasm::runtime::Env, _>(
-			code,
-			runtime,
-			&schedule,
-			self.code_info.determinism,
-			StackLimits::default(),
-			match function {
-				ExportedFunction::Call => AllowDeprecatedInterface::Yes,
-				ExportedFunction::Constructor => AllowDeprecatedInterface::No,
-			},
-		)
-		.map_err(|msg| {
-			log::debug!(target: LOG_TARGET, "failed to instantiate code to wasmi: {}", msg);
-			Error::<T>::CodeRejected
-		})?;
-		store.data_mut().set_memory(memory);
-
-		// Set fuel limit for the wasmi execution.
-		// We normalize it by the base instruction weight, as its cost in wasmi engine is `1`.
-		let fuel_limit = store
-			.data_mut()
-			.ext()
-			.gas_meter_mut()
-			.gas_left()
-			.ref_time()
-			.checked_div(T::Schedule::get().instruction_weights.base as u64)
-			.ok_or(Error::<T>::InvalidSchedule)?;
-		store
-			.add_fuel(fuel_limit)
-			.expect("We've set up engine to fuel consuming mode; qed");
-
-		// Sync this frame's gas meter with the engine's one.
-		let process_result = |mut store: Store<Runtime<E>>, result| {
-			let engine_consumed_total =
-				store.fuel_consumed().expect("Fuel metering is enabled; qed");
-			let gas_meter = store.data_mut().ext().gas_meter_mut();
-			gas_meter.charge_fuel(engine_consumed_total)?;
-			store.into_data().to_execution_result(result)
-		};
-
-		// Start function should already see the correct refcount in case it will be ever inspected.
-		if let &ExportedFunction::Constructor = function {
-			E::increment_refcount(self.code_hash)?;
-		}
-
-		// Any abort in start function (includes `return` + `terminate`) will make us skip the
-		// call into the subsequent exported function. This means that calling `return` returns data
-		// from the whole contract execution.
-		match instance.start(&mut store) {
-			Ok(instance) => {
-				let exported_func = instance
-					.get_export(&store, function.identifier())
-					.and_then(|export| export.into_func())
-					.ok_or_else(|| {
-						log::error!(target: LOG_TARGET, "failed to find entry point");
-						Error::<T>::CodeRejected
-					})?;
-
-				let result = exported_func.call(&mut store, &[], &mut []);
-				process_result(store, result)
-			},
-			Err(err) => process_result(store, Err(err)),
+		if self.is_wasm() {
+			self.execute_wasm(ext, function, input_data)
+		} else {
+			self.execute_riscv(ext, function, input_data)
 		}
 	}
 

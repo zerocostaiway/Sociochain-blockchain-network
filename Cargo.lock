@@ -13120,6 +13120,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "polkavm"
+version = "0.2.0"
+source = "git+https://github.com/koute/polkavm.git#d124a5a87c7197cb0bad09f4d42a92d4faa96d6b"
+dependencies = [
+ "log",
+ "polkavm-assembler",
+ "polkavm-common",
+ "polkavm-linux-sandbox",
+]
+
+[[package]]
+name = "polkavm-assembler"
+version = "0.2.0"
+source = "git+https://github.com/koute/polkavm.git#d124a5a87c7197cb0bad09f4d42a92d4faa96d6b"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "polkavm-common"
+version = "0.2.0"
+source = "git+https://github.com/koute/polkavm.git#d124a5a87c7197cb0bad09f4d42a92d4faa96d6b"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "polkavm-linux-raw"
+version = "0.2.0"
+source = "git+https://github.com/koute/polkavm.git#d124a5a87c7197cb0bad09f4d42a92d4faa96d6b"
+
+[[package]]
+name = "polkavm-linux-sandbox"
+version = "0.2.0"
+source = "git+https://github.com/koute/polkavm.git#d124a5a87c7197cb0bad09f4d42a92d4faa96d6b"
+dependencies = [
+ "log",
+ "polkavm-common",
+ "polkavm-linux-raw",
+]
+
+[[package]]
 name = "polling"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15104,6 +15146,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "paste",
+ "polkavm",
  "rustix 0.36.15",
  "sc-allocator",
  "sc-executor-common",
