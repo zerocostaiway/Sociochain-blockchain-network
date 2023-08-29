@@ -40,7 +40,7 @@ polkadot-node-core-pvf-execute-worker = { path = "node/core/pvf/execute-worker" 
 
 [dev-dependencies]
 assert_cmd = "2.0.4"
-nix = { version = "0.26.1", features = ["signal"] }
+nix = { version = "0.27.1", features = ["signal"] }
 tempfile = "3.2.0"
 tokio = "1.24.2"
 substrate-rpc-client = { path = "../substrate/utils/frame/rpc/client/" }
