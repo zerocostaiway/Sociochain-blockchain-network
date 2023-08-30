@@ -551,7 +551,7 @@ mod tests {
 					bad_justification: false,
 					is_new_best: true,
 				},
-				proof_size: created_block.proof_size
+				proof_size: 0
 			}
 		);
 		// assert that there's a new block in the db.
@@ -715,7 +715,7 @@ mod tests {
 					bad_justification: false,
 					is_new_best: true
 				},
-				proof_size: 0
+				proof_size: created_block.proof_size,
 			}
 		);
 

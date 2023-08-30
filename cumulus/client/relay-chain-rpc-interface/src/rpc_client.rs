@@ -200,12 +200,16 @@ impl RelayChainRpcClient {
 			))
 		})?;
 
-		let value = rx.await.map_err(|err| {
-			RelayChainError::WorkerCommunicationError(format!(
-				"Unexpected channel close on RPC worker side: {}",
-				err
-			))
-		})??;
+		// TODO(niklasad1): fix this.
+		let value = rx
+			.await
+			.map_err(|err| {
+				RelayChainError::WorkerCommunicationError(format!(
+					"Unexpected channel close on RPC worker side: {}",
+					err
+				))
+			})?
+			.unwrap();
 
 		serde_json::from_value(value).map_err(|_| {
 			trace_error(&RelayChainError::GenericError("Unable to deserialize value".to_string()));

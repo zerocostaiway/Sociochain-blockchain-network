@@ -21,7 +21,7 @@ use crate::chain_head::hex_string;
 use super::{archive::Archive, *};
 
 use codec::{Decode, Encode};
-use jsonrpsee::{types::EmptyServerParams as EmptyParams, RpcModule};
+use jsonrpsee::{core::EmptyServerParams as EmptyParams, RpcModule};
 use sc_block_builder::BlockBuilderProvider;
 
 use sp_consensus::BlockOrigin;

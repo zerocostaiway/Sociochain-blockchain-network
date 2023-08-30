@@ -19,14 +19,17 @@
 //! Blockchain API backend for full nodes.
 
 use super::{client_err, ChainBackend, Error};
-use crate::SubscriptionTaskExecutor;
+use crate::{
+	utils::{accept_and_pipe_from_stream, spawn_subscription_task},
+	SubscriptionTaskExecutor,
+};
 use std::{marker::PhantomData, sync::Arc};
 
 use futures::{
-	future::{self, FutureExt},
+	future::{self},
 	stream::{self, Stream, StreamExt},
 };
-use jsonrpsee::SubscriptionSink;
+use jsonrpsee::{core::async_trait, PendingSubscriptionSink};
 use sc_client_api::{BlockBackend, BlockchainEvents};
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::SignedBlock, traits::Block as BlockT};
@@ -48,6 +51,7 @@ impl<Block: BlockT, Client> FullChain<Block, Client> {
 	}
 }
 
+#[async_trait]
 impl<Block, Client> ChainBackend<Client, Block> for FullChain<Block, Client>
 where
 	Block: BlockT + 'static,
@@ -66,11 +70,12 @@ where
 		self.client.block(self.unwrap_or_best(hash)).map_err(client_err)
 	}
 
-	fn subscribe_all_heads(&self, sink: SubscriptionSink) {
+	fn subscribe_all_heads(&self, pending: PendingSubscriptionSink) {
 		subscribe_headers(
+			"rpc-subscription-chain_subscribeAllHeads",
 			&self.client,
 			&self.executor,
-			sink,
+			pending,
 			|| self.client().info().best_hash,
 			|| {
 				self.client()
@@ -80,11 +85,12 @@ where
 		)
 	}
 
-	fn subscribe_new_heads(&self, sink: SubscriptionSink) {
+	fn subscribe_new_heads(&self, pending: PendingSubscriptionSink) {
 		subscribe_headers(
+			"rpc-subscription-chain_subscribeNewHeads",
 			&self.client,
 			&self.executor,
-			sink,
+			pending,
 			|| self.client().info().best_hash,
 			|| {
 				self.client()
@@ -95,11 +101,12 @@ where
 		)
 	}
 
-	fn subscribe_finalized_heads(&self, sink: SubscriptionSink) {
+	fn subscribe_finalized_heads(&self, pending: PendingSubscriptionSink) {
 		subscribe_headers(
+			"rpc-subscription-chain_subscribeFinalizedHeads",
 			&self.client,
 			&self.executor,
-			sink,
+			pending,
 			|| self.client().info().finalized_hash,
 			|| {
 				self.client()
@@ -112,9 +119,10 @@ where
 
 /// Subscribe to new headers.
 fn subscribe_headers<Block, Client, F, G, S>(
+	label: &'static str,
 	client: &Arc<Client>,
 	executor: &SubscriptionTaskExecutor,
-	mut sink: SubscriptionSink,
+	pending: PendingSubscriptionSink,
 	best_block_hash: G,
 	stream: F,
 ) where
@@ -139,9 +147,5 @@ fn subscribe_headers<Block, Client, F, G, S>(
 	// duplicates at the beginning of the stream though.
 	let stream = stream::iter(maybe_header).chain(stream());
 
-	let fut = async move {
-		sink.pipe_from_stream(stream).await;
-	};
-
-	executor.spawn("substrate-rpc-subscription", Some("rpc"), fut.boxed());
+	spawn_subscription_task(label, executor, accept_and_pipe_from_stream(pending, stream, 16));
 }

@@ -44,6 +44,7 @@ pub struct Runner<C: SubstrateCli> {
 	tokio_runtime: tokio::runtime::Runtime,
 	signals: Signals,
 	phantom: PhantomData<C>,
+	_rpc_tokio_runtime: tokio::runtime::Runtime,
 }
 
 impl<C: SubstrateCli> Runner<C> {
@@ -52,8 +53,15 @@ impl<C: SubstrateCli> Runner<C> {
 		config: Configuration,
 		tokio_runtime: tokio::runtime::Runtime,
 		signals: Signals,
+		rpc_tokio_runtime: tokio::runtime::Runtime,
 	) -> Result<Runner<C>> {
-		Ok(Runner { config, tokio_runtime, signals, phantom: PhantomData })
+		Ok(Runner {
+			config,
+			tokio_runtime,
+			signals,
+			phantom: PhantomData,
+			_rpc_tokio_runtime: rpc_tokio_runtime,
+		})
 	}
 
 	/// Log information about the node itself.
@@ -274,6 +282,7 @@ mod tests {
 				rpc_id_provider: Default::default(),
 				rpc_max_subs_per_conn: Default::default(),
 				rpc_port: 9944,
+				rpc_message_buffer_capacity: Default::default(),
 				prometheus_config: None,
 				telemetry_endpoints: None,
 				default_heap_pages: None,
