@@ -79,16 +79,16 @@ impl<T: Config> Delegation<T> {
 		let delegator_balance = T::Currency::free_balance(&delegator);
 		ensure!(value >= T::Currency::minimum_balance(), Error::<T>::InsufficientBond);
 		ensure!(delegator_balance >= value, Error::<T>::InsufficientBond);
-		ensure!(delegatee != delegator, Error::<T>::CannotDelegate);
+		ensure!(delegatee != delegator, Error::<T>::InvalidDelegation);
 
 		// A delegator cannot receive delegations.
 		if <Delegators<T>>::contains_key(&delegatee) {
-			return Err(Error::<T>::CannotReceiveDelegation.into())
+			return Err(Error::<T>::InvalidDelegation.into())
 		}
 
 		// A delegatee cannot delegate to another account
 		if <Delegatees<T>>::contains_key(&delegator) {
-			return Err(Error::<T>::CannotDelegate.into())
+			return Err(Error::<T>::InvalidDelegation.into())
 		}
 
 		let mut new_delegation_amount = value;
@@ -98,7 +98,7 @@ impl<T: Config> Delegation<T> {
 			// add to existing delegation.
 			let (current_delegatee, current_delegation) =
 				delegation.expect("checked delegation exists above; qed");
-			ensure!(current_delegatee == delegatee, Error::<T>::CannotDelegate);
+			ensure!(current_delegatee == delegatee, Error::<T>::InvalidDelegation);
 			new_delegation_amount = new_delegation_amount.saturating_add(current_delegation);
 		}
 
