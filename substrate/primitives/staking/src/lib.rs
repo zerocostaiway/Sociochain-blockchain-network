@@ -275,10 +275,10 @@ pub trait StakingInterface {
 /// A generic representation of a delegation based staking apis that other runtime pallets can use.
 ///
 /// Compared to StakingInterface that allows an account to be a direct nominator,
-/// DelegateStakingInterface allows an account (called delegator) to delegate its stake to another
-/// account (delegatee). The difference with delegation based staking is that the funds are locked
-/// in the delegator's account and gives the delegatee the right to use the funds for staking as if
-/// it is a direct nominator.
+/// `DelegateStakingInterface` allows an account (called delegator) to delegate its stake to another
+/// account (delegatee). In delegation based staking, the funds are locked in the delegator's
+/// account and gives the delegatee the right to use the funds for staking as if it is a direct
+/// nominator.
 pub trait DelegatedStakeInterface {
 	/// AccountId type used by the runtime.
 	type AccountId: Clone + sp_std::fmt::Debug;
@@ -297,7 +297,6 @@ pub trait DelegatedStakeInterface {
 	/// Delegate some funds to a new staker.
 	///
 	/// Similar to [`StakingInterface::bond`].
-	/// todo: delegated_bond()
 	fn delegated_bond_new(
 		delegator: Self::AccountId,
 		delegatee: Self::AccountId,
@@ -314,12 +313,14 @@ pub trait DelegatedStakeInterface {
 		value: Self::Balance,
 	) -> DispatchResult;
 
-	/// Migrate to a delegation based stake.
+	/// Migrate a direct stake to a delegation based stake.
 	///
-	/// Moves locked funds from the delegatee's account to the delegator's account and restake it as
-	/// a delegator.
-	/// todo: Rename it to something more general since migrate sounds temporary
-	fn delegated_bond_migrate(
+	/// Takes a new delegatee account as input. The required funds are moved from the delegatee
+	/// account (who is an active staker) to the delegator account and restaked.
+	///
+	/// This is useful to move active funds in a non-delegation based pool account and migrate it
+	/// into a delegation based staking.
+	fn convert_to_delegated_bond(
 		delegator: Self::AccountId,
 		delegatee: Self::AccountId,
 		value: Self::Balance,
