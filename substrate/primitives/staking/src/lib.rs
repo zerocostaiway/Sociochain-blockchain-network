@@ -313,14 +313,14 @@ pub trait DelegatedStakeInterface {
 		value: Self::Balance,
 	) -> DispatchResult;
 
-	/// Convert a direct stake to a delegation based stake.
+	/// Migrate a direct stake to a delegation based stake.
 	///
 	/// Takes a new delegatee account as input. The required funds are moved from the delegatee
 	/// account (who is an active staker) to the delegator account and restaked.
 	///
 	/// This is useful to move active funds in a non-delegation based pool account and migrate it
 	/// into a delegation based staking.
-	fn delegated_bond_convert(
+	fn delegated_bond_migrate(
 		delegator: Self::AccountId,
 		delegatee: Self::AccountId,
 		value: Self::Balance,

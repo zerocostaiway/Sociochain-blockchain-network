@@ -1807,7 +1807,7 @@ impl<T: Config> DelegatedStakeInterface for Pallet<T> {
 		Self::bond_extra(RawOrigin::Signed(delegatee.clone()).into(), extra)
 	}
 
-	fn delegated_bond_convert(
+	fn delegated_bond_migrate(
 		delegator: Self::AccountId,
 		delegatee: Self::AccountId,
 		value: Self::Balance,
