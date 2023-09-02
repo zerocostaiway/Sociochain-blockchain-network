@@ -44,10 +44,10 @@ mod impls;
 pub use impls::*;
 
 use crate::{
-	slashing, weights::WeightInfo, AccountIdLookupOf, ActiveEraInfo, BalanceOf, EraPayout,
-	EraRewardPoints, Exposure, Forcing, MaxNominationsOf, NegativeImbalanceOf, Nominations,
-	NominationsQuota, PositiveImbalanceOf, RewardDestination, SessionInterface, StakingLedger,
-	UnappliedSlash, UnlockChunk, ValidatorPrefs,
+	delegation, slashing, weights::WeightInfo, AccountIdLookupOf, ActiveEraInfo, BalanceOf,
+	EraPayout, EraRewardPoints, Exposure, Forcing, MaxNominationsOf, NegativeImbalanceOf,
+	Nominations, NominationsQuota, PositiveImbalanceOf, RewardDestination, SessionInterface,
+	StakingLedger, UnappliedSlash, UnlockChunk, ValidatorPrefs,
 };
 
 const STAKING_ID: LockIdentifier = *b"staking ";
@@ -580,6 +580,24 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type ChillThreshold<T: Config> = StorageValue<_, Percent, OptionQuery>;
 
+	/// Map of Delegators to their delegation.
+	///
+	/// Note: We are not using a double map with delegator and delegatee account as keys since we
+	/// want to restrict delegators to delegate only to one account.
+	#[pallet::storage]
+	pub(crate) type Delegators<T: Config> =
+		CountedStorageMap<_, Twox64Concat, T::AccountId, (T::AccountId, BalanceOf<T>), OptionQuery>;
+
+	/// Map of Delegatee to their Ledger.
+	#[pallet::storage]
+	pub(crate) type Delegatees<T: Config> = CountedStorageMap<
+		_,
+		Twox64Concat,
+		T::AccountId,
+		delegation::DelegationAggregate<T>,
+		OptionQuery,
+	>;
+
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
@@ -760,6 +778,13 @@ pub mod pallet {
 		CommissionTooLow,
 		/// Some bound is not met.
 		BoundNotMet,
+		/// Can not delegate to another delegator.
+		CannotReceiveDelegation,
+		/// Delegation not allowed. This could happen if 1) existing delegatee tries to delegate,
+		/// 2) an account tries delegating to self, 3) tries to delegate to multiple Delegatees.
+		CannotDelegate,
+		/// The account does not have enough funds to perform the operation.
+		NotEnoughFunds,
 	}
 
 	#[pallet::hooks]

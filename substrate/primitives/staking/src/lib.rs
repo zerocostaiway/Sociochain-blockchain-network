@@ -272,4 +272,75 @@ pub trait StakingInterface {
 	fn set_current_era(era: EraIndex);
 }
 
+/// A generic representation of a delegation based staking apis that other runtime pallets can use.
+///
+/// Compared to StakingInterface that allows an account to be a direct nominator,
+/// DelegateStakingInterface allows an account (called delegator) to delegate its stake to another
+/// account (delegatee). The difference with delegation based staking is that the funds are locked
+/// in the delegator's account and gives the delegatee the right to use the funds for staking as if
+/// it is a direct nominator.
+pub trait DelegatedStakeInterface {
+	/// AccountId type used by the runtime.
+	type AccountId: Clone + sp_std::fmt::Debug;
+
+	/// Balance type used by the runtime.
+	type Balance: Sub<Output = Self::Balance>
+		+ Ord
+		+ PartialEq
+		+ Default
+		+ Copy
+		+ MaxEncodedLen
+		+ FullCodec
+		+ TypeInfo
+		+ Saturating;
+
+	/// Delegate some funds to a new staker.
+	///
+	/// Similar to [`StakingInterface::bond`].
+	/// todo: delegated_bond()
+	fn delegated_bond_new(
+		delegator: Self::AccountId,
+		delegatee: Self::AccountId,
+		value: Self::Balance,
+		payee: Self::AccountId,
+	) -> DispatchResult;
+
+	/// Delegate some funds or add to an existing staker.
+	///
+	/// Similar to [`StakingInterface::bond_extra`].
+	fn delegated_bond_extra(
+		delegator: Self::AccountId,
+		delegatee: Self::AccountId,
+		value: Self::Balance,
+	) -> DispatchResult;
+
+	/// Migrate to a delegation based stake.
+	///
+	/// Moves locked funds from the delegatee's account to the delegator's account and restake it as
+	/// a delegator.
+	/// todo: Rename it to something more general since migrate sounds temporary
+	fn delegated_bond_migrate(
+		delegator: Self::AccountId,
+		delegatee: Self::AccountId,
+		value: Self::Balance,
+	) -> DispatchResult;
+
+	/// Unbond some funds from a delegator.
+	///
+	/// Similar to [`StakingInterface::unbond`].
+	fn unbond(delegatee: Self::AccountId, value: Self::Balance) -> DispatchResult;
+
+	/// Remove delegation of some or all funds available for unlock at the current era.
+	///
+	/// Returns whether the stash was killed because of this withdraw or not.
+	///
+	/// Similar to [`StakingInterface::withdraw_unbonded`].
+	fn withdraw_unbonded(
+		delegatee: Self::AccountId,
+		delegator: Self::AccountId,
+		value: Self::Balance,
+		num_slashing_spans: u32,
+	) -> Result<bool, DispatchError>;
+}
+
 sp_core::generate_feature_enabled_macro!(runtime_benchmarks_enabled, feature = "runtime-benchmarks", $);

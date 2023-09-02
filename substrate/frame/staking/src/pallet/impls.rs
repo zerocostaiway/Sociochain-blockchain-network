@@ -41,15 +41,15 @@ use sp_runtime::{
 use sp_staking::{
 	currency_to_vote::CurrencyToVote,
 	offence::{DisableStrategy, OffenceDetails, OnOffenceHandler},
-	EraIndex, SessionIndex, Stake, StakingInterface,
+	DelegatedStakeInterface, EraIndex, SessionIndex, Stake, StakingInterface,
 };
 use sp_std::prelude::*;
 
 use crate::{
-	election_size_tracker::StaticTracker, log, slashing, weights::WeightInfo, ActiveEraInfo,
-	BalanceOf, EraPayout, Exposure, ExposureOf, Forcing, IndividualExposure, MaxNominationsOf,
-	MaxWinnersOf, Nominations, NominationsQuota, PositiveImbalanceOf, RewardDestination,
-	SessionInterface, StakingLedger, ValidatorPrefs,
+	delegation::Delegation, election_size_tracker::StaticTracker, log, slashing,
+	weights::WeightInfo, ActiveEraInfo, BalanceOf, EraPayout, Exposure, ExposureOf, Forcing,
+	IndividualExposure, MaxNominationsOf, MaxWinnersOf, Nominations, NominationsQuota,
+	PositiveImbalanceOf, RewardDestination, SessionInterface, StakingLedger, ValidatorPrefs,
 };
 
 use super::{pallet::*, STAKING_ID};
@@ -138,6 +138,13 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(used_weight)
+	}
+
+	pub(super) fn do_partial_withdraw_unbonded(
+		staker: &T::AccountId,
+		value: BalanceOf<T>,
+	) -> Result<Weight, DispatchError> {
+		todo!("needed for delegator unbond")
 	}
 
 	pub(super) fn do_payout_stakers(
@@ -1763,6 +1770,81 @@ impl<T: Config> StakingInterface for Pallet<T> {
 		fn set_current_era(era: EraIndex) {
 			CurrentEra::<T>::put(era);
 		}
+	}
+}
+
+impl<T: Config> DelegatedStakeInterface for Pallet<T> {
+	type AccountId = T::AccountId;
+	type Balance = BalanceOf<T>;
+
+	fn delegated_bond_new(
+		delegator: Self::AccountId,
+		delegatee: Self::AccountId,
+		value: Self::Balance,
+		payee: Self::AccountId,
+	) -> sp_runtime::DispatchResult {
+		// delegate funds from delegator to delegatee.
+		Delegation::<T>::delegate(delegator.clone(), delegatee.clone(), value)?;
+
+		// Bond with delegatee as a new staker.
+		Self::bond(
+			RawOrigin::Signed(delegatee.clone()).into(),
+			value,
+			RewardDestination::Account(payee.clone()),
+		)
+	}
+
+	// Just delegate balance.
+	fn delegated_bond_extra(
+		delegator: Self::AccountId,
+		delegatee: Self::AccountId,
+		extra: Self::Balance,
+	) -> sp_runtime::DispatchResult {
+		// delegate funds to from delegator to delegatee.
+		Delegation::<T>::delegate(delegator.clone(), delegatee.clone(), extra)?;
+		// bond extra with delegatee as the staker.
+		Self::bond_extra(RawOrigin::Signed(delegatee.clone()).into(), extra)
+	}
+
+	fn delegated_bond_migrate(
+		delegator: Self::AccountId,
+		delegatee: Self::AccountId,
+		value: Self::Balance,
+	) -> sp_runtime::DispatchResult {
+		ensure!(value >= T::Currency::minimum_balance(), Error::<T>::InsufficientBond);
+		// ledger for delegatee account should always be bonded by stash.
+		let mut ledger = Self::ledger(&delegatee).ok_or(Error::<T>::NotStash)?;
+		ensure!(ledger.active > value + T::Currency::minimum_balance(), Error::<T>::NotEnoughFunds);
+
+		// direct staked balance of delegatee => total staked balance - delegated balance?
+		// from this direct balance, they can migrate to delegated balance.
+
+		// (1) Unlock value at delegatee with StakingID.
+		// (2) transfer to delegator.
+		// (3) lock with delegating_id.
+		// (4) Update Ledger
+		// (5) Verify no changes needed in Staking Ledger
+		// Delegation::<T>::migrate_into(delegatee, delegator, value)
+		todo!()
+	}
+
+	fn unbond(delegatee: Self::AccountId, value: Self::Balance) -> sp_runtime::DispatchResult {
+		Self::unbond(RawOrigin::Signed(delegatee).into(), value)
+			.map_err(|with_post| with_post.error)
+			.map(|_| ())
+	}
+
+	fn withdraw_unbonded(
+		delegatee: Self::AccountId,
+		delegator: Self::AccountId,
+		value: Self::Balance,
+		num_slashing_spans: u32,
+	) -> Result<bool, DispatchError> {
+		// cannot call `Self::withdraw_unbonded` since it does full withdraw. This function though
+		// would be a partial withdraw. The delegatee might have more funds than value waiting to be
+		// unbonded, but only delegator value would be unbonded at a time.
+		let _ = Self::do_partial_withdraw_unbonded(&delegatee, value);
+		todo!()
 	}
 }
 

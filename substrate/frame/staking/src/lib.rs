@@ -292,6 +292,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod delegation;
 pub mod election_size_tracker;
 pub mod inflation;
 pub mod migrations;
