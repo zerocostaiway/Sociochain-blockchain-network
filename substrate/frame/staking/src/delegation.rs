@@ -55,80 +55,59 @@ pub struct DelegationAggregate<T: Config> {
 	pub pending_slash: BalanceOf<T>,
 }
 
-// Delegation state that is not saved yet in database.
-struct New;
-// Existing delegation state which contains information only about delegatee.
-struct OnlyDelegatee;
-// Delegation state which contains information about both delegator and delegatee.
-struct Full;
-
-pub struct Delegation<T: Config> {
-	ledger: DelegationAggregate<T>,
+pub(crate) fn delegated_balance<T: Config>(delegatee: &T::AccountId) -> BalanceOf<T> {
+	<Delegatees<T>>::get(delegatee).map_or_else(|| 0u32.into(), |aggregate| aggregate.balance)
+}
+pub(crate) fn delegate<T: Config>(
 	delegator: T::AccountId,
 	delegatee: T::AccountId,
-	delegator_balance: BalanceOf<T>,
-	// state: sp_std::marker::PhantomData<State>,
+	value: BalanceOf<T>,
+) -> DispatchResult {
+	let delegator_balance = T::Currency::free_balance(&delegator);
+	ensure!(value >= T::Currency::minimum_balance(), Error::<T>::InsufficientBond);
+	ensure!(delegator_balance >= value, Error::<T>::InsufficientBond);
+	ensure!(delegatee != delegator, Error::<T>::InvalidDelegation);
+
+	// A delegator cannot receive delegations.
+	if <Delegators<T>>::contains_key(&delegatee) {
+		return Err(Error::<T>::InvalidDelegation.into())
+	}
+
+	// A delegatee cannot delegate to another account
+	if <Delegatees<T>>::contains_key(&delegator) {
+		return Err(Error::<T>::InvalidDelegation.into())
+	}
+
+	let mut new_delegation_amount = value;
+
+	let delegation = <Delegators<T>>::get(&delegator);
+	if delegation.is_some() {
+		// add to existing delegation.
+		let (current_delegatee, current_delegation) =
+			delegation.expect("checked delegation exists above; qed");
+		ensure!(current_delegatee == delegatee, Error::<T>::InvalidDelegation);
+		new_delegation_amount = new_delegation_amount.saturating_add(current_delegation);
+	}
+
+	<Delegators<T>>::insert(&delegator, (&delegatee, new_delegation_amount));
+	<Delegatees<T>>::mutate(&delegatee, |maybe_aggregate| match maybe_aggregate {
+		Some(ledger) => ledger.balance.saturating_accrue(value),
+		None =>
+			*maybe_aggregate = Some(DelegationAggregate {
+				balance: new_delegation_amount,
+				pending_slash: Default::default(),
+			}),
+	});
+	T::Currency::set_lock(DELEGATING_ID, &delegator, value, WithdrawReasons::all());
+
+	Ok(())
 }
 
-impl<T: Config> Delegation<T> {
-	pub(crate) fn delegated_balance(delegatee: &T::AccountId,) -> BalanceOf<T> {
-		let maybe_delegation_aggregate = <Delegatees<T>>::get(delegatee);
-		maybe_delegation_aggregate.map_or_else(
-			|| 0u32.into(),
-			|aggregate| aggregate.balance,
-		)
-	}
-	pub(crate) fn delegate(
-		delegator: T::AccountId,
-		delegatee: T::AccountId,
-		value: BalanceOf<T>,
-	) -> DispatchResult {
-		let delegator_balance = T::Currency::free_balance(&delegator);
-		ensure!(value >= T::Currency::minimum_balance(), Error::<T>::InsufficientBond);
-		ensure!(delegator_balance >= value, Error::<T>::InsufficientBond);
-		ensure!(delegatee != delegator, Error::<T>::InvalidDelegation);
-
-		// A delegator cannot receive delegations.
-		if <Delegators<T>>::contains_key(&delegatee) {
-			return Err(Error::<T>::InvalidDelegation.into())
-		}
-
-		// A delegatee cannot delegate to another account
-		if <Delegatees<T>>::contains_key(&delegator) {
-			return Err(Error::<T>::InvalidDelegation.into())
-		}
-
-		let mut new_delegation_amount = value;
-
-		let delegation = <Delegators<T>>::get(&delegator);
-		if delegation.is_some() {
-			// add to existing delegation.
-			let (current_delegatee, current_delegation) =
-				delegation.expect("checked delegation exists above; qed");
-			ensure!(current_delegatee == delegatee, Error::<T>::InvalidDelegation);
-			new_delegation_amount = new_delegation_amount.saturating_add(current_delegation);
-		}
-
-		<Delegators<T>>::insert(&delegator, (&delegatee, new_delegation_amount));
-		<Delegatees<T>>::mutate(&delegatee, |maybe_aggregate| match maybe_aggregate {
-			Some(ledger) => ledger.balance.saturating_accrue(value),
-			None =>
-				*maybe_aggregate = Some(DelegationAggregate {
-					balance: new_delegation_amount,
-					pending_slash: Default::default(),
-				}),
-		});
-		T::Currency::set_lock(DELEGATING_ID, &delegator, value, WithdrawReasons::all());
-
-		Ok(())
-	}
-
-	pub(crate) fn withdraw(
-		delegatee: T::AccountId,
-		delegator: T::AccountId,
-		value: BalanceOf<T>,
-		num_slashing_spans: u32,
-	) -> Result<bool, DispatchError> {
-		todo!()
-	}
+pub(crate) fn withdraw<T: Config>(
+	delegatee: T::AccountId,
+	delegator: T::AccountId,
+	value: BalanceOf<T>,
+	num_slashing_spans: u32,
+) -> Result<bool, DispatchError> {
+	todo!()
 }

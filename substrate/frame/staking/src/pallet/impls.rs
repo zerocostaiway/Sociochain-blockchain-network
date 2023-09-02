@@ -47,10 +47,10 @@ use sp_staking::{
 use sp_std::prelude::*;
 
 use crate::{
-	delegation::Delegation, election_size_tracker::StaticTracker, log, slashing,
-	weights::WeightInfo, ActiveEraInfo, BalanceOf, EraPayout, Exposure, ExposureOf, Forcing,
-	IndividualExposure, MaxNominationsOf, MaxWinnersOf, Nominations, NominationsQuota,
-	PositiveImbalanceOf, RewardDestination, SessionInterface, StakingLedger, ValidatorPrefs,
+	delegation, election_size_tracker::StaticTracker, log, slashing, weights::WeightInfo,
+	ActiveEraInfo, BalanceOf, EraPayout, Exposure, ExposureOf, Forcing, IndividualExposure,
+	MaxNominationsOf, MaxWinnersOf, Nominations, NominationsQuota, PositiveImbalanceOf,
+	RewardDestination, SessionInterface, StakingLedger, ValidatorPrefs,
 };
 
 use super::{pallet::*, STAKING_ID};
@@ -1785,7 +1785,7 @@ impl<T: Config> DelegatedStakeInterface for Pallet<T> {
 		payee: Self::AccountId,
 	) -> sp_runtime::DispatchResult {
 		// delegate funds from delegator to delegatee.
-		Delegation::<T>::delegate(delegator.clone(), delegatee.clone(), value)?;
+		delegation::delegate::<T>(delegator.clone(), delegatee.clone(), value)?;
 
 		// Bond with delegatee as a new staker.
 		Self::bond(
@@ -1802,7 +1802,7 @@ impl<T: Config> DelegatedStakeInterface for Pallet<T> {
 		extra: Self::Balance,
 	) -> sp_runtime::DispatchResult {
 		// delegate funds to from delegator to delegatee.
-		Delegation::<T>::delegate(delegator.clone(), delegatee.clone(), extra)?;
+		delegation::delegate::<T>(delegator.clone(), delegatee.clone(), extra)?;
 		// bond extra with delegatee as the staker.
 		Self::bond_extra(RawOrigin::Signed(delegatee.clone()).into(), extra)
 	}
@@ -1819,7 +1819,7 @@ impl<T: Config> DelegatedStakeInterface for Pallet<T> {
 
 		// we want to transfer the bonded value only from active bond that is not part of delegation
 		// bond. We ignore the funds that are in unlocking period.
-		let active_direct = ledger.active - Delegation::<T>::delegated_balance(&delegatee);
+		let active_direct = ledger.active - delegation::delegated_balance::<T>(&delegatee);
 		ensure!(ledger.active > value + T::Currency::minimum_balance(), Error::<T>::NotEnoughFunds);
 
 		// Unbond `value` from delegatee and transfer it to delegator.
@@ -1832,7 +1832,7 @@ impl<T: Config> DelegatedStakeInterface for Pallet<T> {
 		T::Currency::transfer(&delegatee, &delegator, value, KeepAlive)?;
 
 		// Delegate the unbonded fund.
-		Delegation::<T>::delegate(delegator, delegatee, value)?;
+		delegation::delegate::<T>(delegator, delegatee, value)?;
 
 		Ok(())
 	}
