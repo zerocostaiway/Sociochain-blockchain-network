@@ -55,9 +55,11 @@ pub struct DelegationAggregate<T: Config> {
 	pub pending_slash: BalanceOf<T>,
 }
 
+/// Total balance delegated to the given delegatee.
 pub(crate) fn delegated_balance<T: Config>(delegatee: &T::AccountId) -> BalanceOf<T> {
 	<Delegatees<T>>::get(delegatee).map_or_else(|| 0u32.into(), |aggregate| aggregate.balance)
 }
+/// Delegate some amount from delegator to delegatee.
 pub(crate) fn delegate<T: Config>(
 	delegator: T::AccountId,
 	delegatee: T::AccountId,
