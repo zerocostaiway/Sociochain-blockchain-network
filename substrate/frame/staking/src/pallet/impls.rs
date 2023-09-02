@@ -27,8 +27,9 @@ use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	pallet_prelude::*,
 	traits::{
-		Currency, Defensive, DefensiveResult, EstimateNextNewSession, Get, Imbalance,
-		LockableCurrency, OnUnbalanced, TryCollect, UnixTime, WithdrawReasons,
+		Currency, Defensive, DefensiveResult, EstimateNextNewSession,
+		ExistenceRequirement::KeepAlive, Get, Imbalance, LockableCurrency, OnUnbalanced,
+		TryCollect, UnixTime, WithdrawReasons,
 	},
 	weights::Weight,
 };
@@ -1806,26 +1807,34 @@ impl<T: Config> DelegatedStakeInterface for Pallet<T> {
 		Self::bond_extra(RawOrigin::Signed(delegatee.clone()).into(), extra)
 	}
 
-	fn convert_to_delegated_bond(
+	fn delegated_bond_convert(
 		delegator: Self::AccountId,
 		delegatee: Self::AccountId,
 		value: Self::Balance,
 	) -> sp_runtime::DispatchResult {
 		ensure!(value >= T::Currency::minimum_balance(), Error::<T>::InsufficientBond);
+
 		// ledger for delegatee account should always be bonded by stash.
-		let mut ledger = Self::ledger(&delegatee).ok_or(Error::<T>::NotStash)?;
+		let ledger = Self::ledger(&delegatee).ok_or(Error::<T>::NotStash)?;
+
+		// we want to transfer the bonded value only from active bond that is not part of delegation
+		// bond. We ignore the funds that are in unlocking period.
+		let active_direct = ledger.active - Delegation::<T>::delegated_balance(&delegatee);
 		ensure!(ledger.active > value + T::Currency::minimum_balance(), Error::<T>::NotEnoughFunds);
 
-		// direct staked balance of delegatee => total staked balance - delegated balance?
-		// from this direct balance, they can migrate to delegated balance.
+		// Unbond `value` from delegatee and transfer it to delegator.
+		T::Currency::set_lock(
+			STAKING_ID,
+			&delegatee,
+			active_direct - value,
+			WithdrawReasons::all(),
+		);
+		T::Currency::transfer(&delegatee, &delegator, value, KeepAlive)?;
 
-		// (1) Unlock value at delegatee with StakingID.
-		// (2) transfer to delegator.
-		// (3) lock with delegating_id.
-		// (4) Update Ledger
-		// (5) Verify no changes needed in Staking Ledger
-		// Delegation::<T>::migrate_into(delegatee, delegator, value)
-		todo!()
+		// Delegate the unbonded fund.
+		Delegation::<T>::delegate(delegator, delegatee, value)?;
+
+		Ok(())
 	}
 
 	fn unbond(delegatee: Self::AccountId, value: Self::Balance) -> sp_runtime::DispatchResult {

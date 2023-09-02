@@ -40,7 +40,7 @@ use sp_runtime::{DispatchError, RuntimeDebug, Saturating};
 /// to delegation based staking.
 const DELEGATING_ID: LockIdentifier = *b"delegate";
 
-/// A ledger of a delegator.
+/// An aggregate ledger of a delegator.
 ///
 /// This keeps track of the active balance of the delegator that is made up from the funds that are
 /// currently delegated to a delegatee. It also tracks the slashes yet to be applied.
@@ -71,6 +71,13 @@ pub struct Delegation<T: Config> {
 }
 
 impl<T: Config> Delegation<T> {
+	pub(crate) fn delegated_balance(delegatee: &T::AccountId,) -> BalanceOf<T> {
+		let maybe_delegation_aggregate = <Delegatees<T>>::get(delegatee);
+		maybe_delegation_aggregate.map_or_else(
+			|| 0u32.into(),
+			|aggregate| aggregate.balance,
+		)
+	}
 	pub(crate) fn delegate(
 		delegator: T::AccountId,
 		delegatee: T::AccountId,
@@ -103,10 +110,10 @@ impl<T: Config> Delegation<T> {
 		}
 
 		<Delegators<T>>::insert(&delegator, (&delegatee, new_delegation_amount));
-		<Delegatees<T>>::mutate(&delegatee, |maybe_ledger| match maybe_ledger {
+		<Delegatees<T>>::mutate(&delegatee, |maybe_aggregate| match maybe_aggregate {
 			Some(ledger) => ledger.balance.saturating_accrue(value),
 			None =>
-				*maybe_ledger = Some(DelegationAggregate {
+				*maybe_aggregate = Some(DelegationAggregate {
 					balance: new_delegation_amount,
 					pending_slash: Default::default(),
 				}),
