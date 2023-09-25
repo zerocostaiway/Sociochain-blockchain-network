@@ -23,7 +23,7 @@ use codec::{Decode, Encode};
 use futures::{channel::oneshot, stream::StreamExt};
 use log::{debug, trace};
 use prost::Message;
-use sc_network::PeerId;
+use sc_network_types::PeerId;
 use schnellru::{ByLength, LruMap};
 
 use sc_client_api::{BlockBackend, ProofProvider};

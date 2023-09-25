@@ -51,7 +51,7 @@ use crate::{
 	},
 	transport,
 	types::ProtocolName,
-	ReputationChange,
+	Multiaddr, PeerId, ReputationChange,
 };
 
 use codec::DecodeAll;
@@ -69,7 +69,6 @@ use libp2p::{
 		AddressScore, ConnectionError, ConnectionId, ConnectionLimits, DialError, Executor,
 		ListenError, NetworkBehaviour, Swarm, SwarmBuilder, SwarmEvent, THandlerErr,
 	},
-	Multiaddr, PeerId,
 };
 use log::{debug, error, info, trace, warn};
 use metrics::{Histogram, HistogramVec, MetricSources, Metrics};
@@ -170,14 +169,14 @@ where
 		network_config.boot_nodes = network_config
 			.boot_nodes
 			.into_iter()
-			.filter(|boot_node| boot_node.peer_id != local_peer_id)
+			.filter(|boot_node| boot_node.peer_id != local_peer_id.into())
 			.collect();
 		network_config.default_peers_set.reserved_nodes = network_config
 			.default_peers_set
 			.reserved_nodes
 			.into_iter()
 			.filter(|reserved_node| {
-				if reserved_node.peer_id == local_peer_id {
+				if reserved_node.peer_id == local_peer_id.into() {
 					warn!(
 						target: "sub-libp2p",
 						"Local peer ID used in reserved node, ignoring: {}",
@@ -290,7 +289,7 @@ where
 					reserved_nodes: set_config
 						.reserved_nodes
 						.iter()
-						.map(|node| node.peer_id)
+						.map(|node| node.peer_id.into())
 						.collect(),
 					reserved_only: set_config.non_reserved_mode.is_reserved_only(),
 				};
@@ -360,8 +359,8 @@ where
 			{
 				Err(Error::DuplicateBootnode {
 					address: bootnode.multiaddr.clone(),
-					first_id: bootnode.peer_id,
-					second_id: other.peer_id,
+					first_id: bootnode.peer_id.into(),
+					second_id: other.peer_id.into(),
 				})
 			} else {
 				Ok(())
@@ -373,7 +372,7 @@ where
 
 		for bootnode in network_config.boot_nodes.iter() {
 			boot_node_ids
-				.entry(bootnode.peer_id)
+				.entry(bootnode.peer_id.into())
 				.or_default()
 				.push(bootnode.multiaddr.clone());
 		}
@@ -400,7 +399,12 @@ where
 
 			let discovery_config = {
 				let mut config = DiscoveryConfig::new(local_public.to_peer_id());
-				config.with_permanent_addresses(known_addresses);
+				config.with_permanent_addresses(
+					known_addresses
+						.iter()
+						.map(|(peer, address)| (peer.into(), address.clone()))
+						.collect::<Vec<_>>(),
+				);
 				config.discovery_limit(u64::from(network_config.default_peers_set.out_peers) + 15);
 				config.with_kademlia(
 					params.genesis_hash,
@@ -712,7 +716,7 @@ where
 
 	/// Removes a `PeerId` from the list of reserved peers.
 	pub fn remove_reserved_peer(&self, peer: PeerId) {
-		self.service.remove_reserved_peer(peer);
+		self.service.remove_reserved_peer(peer.into());
 	}
 
 	/// Adds a `PeerId` and its `Multiaddr` as reserved.
@@ -799,8 +803,8 @@ where
 	}
 
 	/// Returns the local Peer ID.
-	fn local_peer_id(&self) -> PeerId {
-		self.local_peer_id
+	fn local_peer_id(&self) -> sc_network_types::PeerId {
+		self.local_peer_id.into()
 	}
 }
 
@@ -862,26 +866,31 @@ where
 	B: BlockT + 'static,
 	H: ExHashT,
 {
-	fn set_authorized_peers(&self, peers: HashSet<PeerId>) {
-		self.sync_protocol_handle.set_reserved_peers(peers);
+	fn set_authorized_peers(&self, peers: HashSet<sc_network_types::PeerId>) {
+		self.sync_protocol_handle
+			.set_reserved_peers(peers.iter().map(|peer| (*peer).into()).collect());
 	}
 
 	fn set_authorized_only(&self, reserved_only: bool) {
 		self.sync_protocol_handle.set_reserved_only(reserved_only);
 	}
 
-	fn add_known_address(&self, peer_id: PeerId, addr: Multiaddr) {
+	fn add_known_address(&self, peer_id: sc_network_types::PeerId, addr: Multiaddr) {
 		let _ = self
 			.to_worker
-			.unbounded_send(ServiceToWorkerMsg::AddKnownAddress(peer_id, addr));
+			.unbounded_send(ServiceToWorkerMsg::AddKnownAddress(peer_id.into(), addr));
 	}
 
-	fn report_peer(&self, who: PeerId, cost_benefit: ReputationChange) {
-		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::ReportPeer(who, cost_benefit));
+	fn report_peer(&self, who: sc_network_types::PeerId, cost_benefit: ReputationChange) {
+		let _ = self
+			.to_worker
+			.unbounded_send(ServiceToWorkerMsg::ReportPeer(who.into(), cost_benefit));
 	}
 
-	fn disconnect_peer(&self, who: PeerId, protocol: ProtocolName) {
-		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::DisconnectPeer(who, protocol));
+	fn disconnect_peer(&self, who: sc_network_types::PeerId, protocol: ProtocolName) {
+		let _ = self
+			.to_worker
+			.unbounded_send(ServiceToWorkerMsg::DisconnectPeer(who.into(), protocol));
 	}
 
 	fn accept_unreserved_peers(&self) {
@@ -894,19 +903,21 @@ where
 
 	fn add_reserved_peer(&self, peer: MultiaddrWithPeerId) -> Result<(), String> {
 		// Make sure the local peer ID is never added as a reserved peer.
-		if peer.peer_id == self.local_peer_id {
+		if peer.peer_id == self.local_peer_id.into() {
 			return Err("Local peer ID cannot be added as a reserved peer.".to_string())
 		}
 
-		let _ = self
-			.to_worker
-			.unbounded_send(ServiceToWorkerMsg::AddKnownAddress(peer.peer_id, peer.multiaddr));
-		self.sync_protocol_handle.add_reserved_peer(peer.peer_id);
+		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::AddKnownAddress(
+			peer.peer_id.into(),
+			peer.multiaddr,
+		));
+		self.sync_protocol_handle.add_reserved_peer(peer.peer_id.into());
+
 		Ok(())
 	}
 
-	fn remove_reserved_peer(&self, peer_id: PeerId) {
-		self.sync_protocol_handle.remove_reserved_peer(peer_id);
+	fn remove_reserved_peer(&self, peer_id: sc_network_types::PeerId) {
+		self.sync_protocol_handle.remove_reserved_peer(peer_id.into());
 	}
 
 	fn set_reserved_peers(
@@ -920,7 +931,8 @@ where
 
 		let peers_addrs = self.split_multiaddr_and_peer_id(peers)?;
 
-		let mut peers: HashSet<PeerId> = HashSet::with_capacity(peers_addrs.len());
+		let mut peers: HashSet<sc_network_types::PeerId> =
+			HashSet::with_capacity(peers_addrs.len());
 
 		for (peer_id, addr) in peers_addrs.into_iter() {
 			// Make sure the local peer ID is never added to the PSM.
@@ -928,7 +940,7 @@ where
 				return Err("Local peer ID cannot be added as a reserved peer.".to_string())
 			}
 
-			peers.insert(peer_id);
+			peers.insert(peer_id.into());
 
 			if !addr.is_empty() {
 				let _ = self
@@ -937,7 +949,8 @@ where
 			}
 		}
 
-		self.protocol_handles[usize::from(*set_id)].set_reserved_peers(peers);
+		self.protocol_handles[usize::from(*set_id)]
+			.set_reserved_peers(peers.iter().map(|peer| (*peer).into()).collect());
 
 		Ok(())
 	}
@@ -977,7 +990,7 @@ where
 	fn remove_peers_from_reserved_set(
 		&self,
 		protocol: ProtocolName,
-		peers: Vec<PeerId>,
+		peers: Vec<sc_network_types::PeerId>,
 	) -> Result<(), String> {
 		let Some(set_id) = self.notification_protocol_ids.get(&protocol) else {
 			return Err(format!(
@@ -987,7 +1000,7 @@ where
 		};
 
 		for peer_id in peers.into_iter() {
-			self.protocol_handles[usize::from(*set_id)].remove_reserved_peer(peer_id);
+			self.protocol_handles[usize::from(*set_id)].remove_reserved_peer(peer_id.into());
 		}
 
 		Ok(())
@@ -997,12 +1010,16 @@ where
 		self.num_connected.load(Ordering::Relaxed)
 	}
 
-	fn peer_role(&self, peer_id: PeerId, handshake: Vec<u8>) -> Option<ObservedRole> {
+	fn peer_role(
+		&self,
+		peer_id: sc_network_types::PeerId,
+		handshake: Vec<u8>,
+	) -> Option<ObservedRole> {
 		match Roles::decode_all(&mut &handshake[..]) {
 			Ok(role) => Some(role.into()),
 			Err(_) => {
 				log::debug!(target: "sub-libp2p", "handshake doesn't contain peer role: {handshake:?}");
-				self.peer_store_handle.peer_role(&peer_id)
+				self.peer_store_handle.peer_role(&(peer_id.into()))
 			},
 		}
 	}
@@ -1025,12 +1042,17 @@ where
 	B: BlockT + 'static,
 	H: ExHashT,
 {
-	fn write_notification(&self, target: PeerId, protocol: ProtocolName, message: Vec<u8>) {
+	fn write_notification(
+		&self,
+		target: sc_network_types::PeerId,
+		protocol: ProtocolName,
+		message: Vec<u8>,
+	) {
 		// We clone the `NotificationsSink` in order to be able to unlock the network-wide
 		// `peers_notifications_sinks` mutex as soon as possible.
 		let sink = {
 			let peers_notifications_sinks = self.peers_notifications_sinks.lock();
-			if let Some(sink) = peers_notifications_sinks.get(&(target, protocol.clone())) {
+			if let Some(sink) = peers_notifications_sinks.get(&(target.into(), protocol.clone())) {
 				sink.clone()
 			} else {
 				// Notification silently discarded, as documented.
@@ -1061,14 +1083,14 @@ where
 
 	fn notification_sender(
 		&self,
-		target: PeerId,
+		target: sc_network_types::PeerId,
 		protocol: ProtocolName,
 	) -> Result<Box<dyn NotificationSenderT>, NotificationSenderError> {
 		// We clone the `NotificationsSink` in order to be able to unlock the network-wide
 		// `peers_notifications_sinks` mutex as soon as possible.
 		let sink = {
 			let peers_notifications_sinks = self.peers_notifications_sinks.lock();
-			if let Some(sink) = peers_notifications_sinks.get(&(target, protocol.clone())) {
+			if let Some(sink) = peers_notifications_sinks.get(&(target.into(), protocol.clone())) {
 				sink.clone()
 			} else {
 				return Err(NotificationSenderError::Closed)
@@ -1098,14 +1120,14 @@ where
 {
 	async fn request(
 		&self,
-		target: PeerId,
+		target: sc_network_types::PeerId,
 		protocol: ProtocolName,
 		request: Vec<u8>,
 		connect: IfDisconnected,
 	) -> Result<Vec<u8>, RequestFailure> {
 		let (tx, rx) = oneshot::channel();
 
-		self.start_request(target, protocol, request, tx, connect);
+		self.start_request(target.into(), protocol, request, tx, connect);
 
 		match rx.await {
 			Ok(v) => v,
@@ -1118,14 +1140,14 @@ where
 
 	fn start_request(
 		&self,
-		target: PeerId,
+		target: sc_network_types::PeerId,
 		protocol: ProtocolName,
 		request: Vec<u8>,
 		tx: oneshot::Sender<Result<Vec<u8>, RequestFailure>>,
 		connect: IfDisconnected,
 	) {
 		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::Request {
-			target,
+			target: target.into(),
 			protocol: protocol.into(),
 			request,
 			pending_response: tx,
@@ -1340,7 +1362,7 @@ where
 			ServiceToWorkerMsg::AddKnownAddress(peer_id, addr) =>
 				self.network_service.behaviour_mut().add_known_address(peer_id, addr),
 			ServiceToWorkerMsg::ReportPeer(peer_id, reputation_change) =>
-				self.peer_store_handle.report_peer(peer_id, reputation_change),
+				self.peer_store_handle.report_peer(peer_id.into(), reputation_change),
 			ServiceToWorkerMsg::EventStream(sender) => self.event_streams.push(sender),
 			ServiceToWorkerMsg::Request {
 				target,
@@ -1452,7 +1474,7 @@ where
 				},
 			SwarmEvent::Behaviour(BehaviourOut::ReputationChanges { peer, changes }) => {
 				for change in changes {
-					self.peer_store_handle.report_peer(peer, change);
+					self.peer_store_handle.report_peer(peer.into(), change);
 				}
 			},
 			SwarmEvent::Behaviour(BehaviourOut::PeerIdentify {

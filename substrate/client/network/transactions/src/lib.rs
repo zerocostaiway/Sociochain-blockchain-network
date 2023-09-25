@@ -31,12 +31,11 @@ use crate::config::*;
 use codec::{Decode, Encode};
 use futures::{prelude::*, stream::FuturesUnordered};
 use log::{debug, trace, warn};
-use sc_network::{multiaddr, PeerId};
 
 use prometheus_endpoint::{register, Counter, PrometheusError, Registry, U64};
 use sc_network::{
 	config::{NonDefaultSetConfig, NonReservedPeerMode, ProtocolId, SetConfig},
-	error,
+	error, multiaddr,
 	service::traits::{NotificationEvent, NotificationService, ValidationResult},
 	types::ProtocolName,
 	utils::{interval, LruHashSet},
@@ -47,6 +46,7 @@ use sc_network_common::{
 	sync::{SyncEvent, SyncEventStream},
 	ExHashT,
 };
+use sc_network_types::PeerId;
 use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedReceiver, TracingUnboundedSender};
 use sp_runtime::traits::Block as BlockT;
 

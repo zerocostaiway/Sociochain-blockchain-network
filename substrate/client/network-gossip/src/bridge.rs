@@ -34,7 +34,7 @@ use futures::{
 };
 use log::trace;
 use prometheus_endpoint::Registry;
-use sc_network::PeerId;
+use sc_network_types::PeerId;
 use sp_runtime::traits::Block as BlockT;
 use std::{
 	collections::{HashMap, VecDeque},

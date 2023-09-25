@@ -40,9 +40,9 @@ use sc_network::{
 		IfDisconnected, IncomingRequest, OutgoingResponse, ProtocolConfig, RequestFailure,
 	},
 	types::ProtocolName,
-	PeerId,
 };
 use sc_network_common::sync::message::{BlockAttributes, BlockData, BlockRequest, FromBlock};
+use sc_network_types::PeerId;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
 	generic::BlockId,

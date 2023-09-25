@@ -34,7 +34,7 @@ async fn validate_and_accept_substream() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -62,7 +62,7 @@ async fn substream_opened() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -84,7 +84,7 @@ async fn send_sync_notification() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -104,7 +104,7 @@ async fn send_sync_notification() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -112,7 +112,7 @@ async fn send_sync_notification() {
 		panic!("invalid event received");
 	}
 
-	notif.send_sync_notification(&peer_id, vec![1, 3, 3, 8]);
+	notif.send_sync_notification(&peer_id.into(), vec![1, 3, 3, 8]);
 	assert_eq!(
 		sync_rx.next().await,
 		Some(NotificationsSinkMessage::Notification { message: vec![1, 3, 3, 8] })
@@ -132,7 +132,7 @@ async fn send_async_notification() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -152,7 +152,7 @@ async fn send_async_notification() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -160,7 +160,7 @@ async fn send_async_notification() {
 		panic!("invalid event received");
 	}
 
-	notif.send_async_notification(&peer_id, vec![1, 3, 3, 9]).await.unwrap();
+	notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 9]).await.unwrap();
 	assert_eq!(
 		async_rx.next().await,
 		Some(NotificationsSinkMessage::Notification { message: vec![1, 3, 3, 9] })
@@ -169,24 +169,24 @@ async fn send_async_notification() {
 
 #[tokio::test]
 async fn send_sync_notification_to_non_existent_peer() {
-	let (proto, notif) = notification_service("/proto/1".into());
+	let (proto, mut notif) = notification_service("/proto/1".into());
 	let (_sink, _, _sync_rx) = NotificationsSink::new(PeerId::random());
 	let (_handle, _stream) = proto.split();
 	let peer = PeerId::random();
 
 	// as per the original implementation, the call doesn't fail
-	notif.send_sync_notification(&peer, vec![1, 3, 3, 7])
+	notif.send_sync_notification(&peer.into(), vec![1, 3, 3, 7])
 }
 
 #[tokio::test]
 async fn send_async_notification_to_non_existent_peer() {
-	let (proto, notif) = notification_service("/proto/1".into());
+	let (proto, mut notif) = notification_service("/proto/1".into());
 	let (_sink, _, _sync_rx) = NotificationsSink::new(PeerId::random());
 	let (_handle, _stream) = proto.split();
 	let peer = PeerId::random();
 
 	if let Err(error::Error::PeerDoesntExist(peer_id)) =
-		notif.send_async_notification(&peer, vec![1, 3, 3, 7]).await
+		notif.send_async_notification(&peer.into(), vec![1, 3, 3, 7]).await
 	{
 		assert_eq!(peer, peer_id);
 	} else {
@@ -207,7 +207,7 @@ async fn receive_notification() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -227,7 +227,7 @@ async fn receive_notification() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -241,7 +241,7 @@ async fn receive_notification() {
 	if let Some(NotificationEvent::NotificationReceived { peer, notification }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(notification, vec![1, 3, 3, 8]);
 	} else {
 		panic!("invalid event received");
@@ -261,7 +261,7 @@ async fn backpressure_works() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -281,7 +281,7 @@ async fn backpressure_works() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -291,12 +291,15 @@ async fn backpressure_works() {
 
 	// fill the message buffer with messages
 	for i in 0..=ASYNC_NOTIFICATIONS_BUFFER_SIZE {
-		assert!(futures::poll!(notif.send_async_notification(&peer_id, vec![1, 3, 3, i as u8]))
-			.is_ready());
+		assert!(futures::poll!(
+			notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, i as u8])
+		)
+		.is_ready());
 	}
 
 	// try to send one more message and verify that the call blocks
-	assert!(futures::poll!(notif.send_async_notification(&peer_id, vec![1, 3, 3, 9])).is_pending());
+	assert!(futures::poll!(notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 9]))
+		.is_pending());
 
 	// release one slot from the buffer for new message
 	assert_eq!(
@@ -305,7 +308,9 @@ async fn backpressure_works() {
 	);
 
 	// verify that a message can be sent
-	assert!(futures::poll!(notif.send_async_notification(&peer_id, vec![1, 3, 3, 9])).is_ready());
+	assert!(
+		futures::poll!(notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 9])).is_ready()
+	);
 }
 
 #[tokio::test]
@@ -321,7 +326,7 @@ async fn peer_disconnects_then_sync_notification_is_sent() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -341,7 +346,7 @@ async fn peer_disconnects_then_sync_notification_is_sent() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -355,7 +360,7 @@ async fn peer_disconnects_then_sync_notification_is_sent() {
 	drop(sync_rx);
 
 	// as per documentation, error is not reported but the notification is silently dropped
-	notif.send_sync_notification(&peer_id, vec![1, 3, 3, 7]);
+	notif.send_sync_notification(&peer_id.into(), vec![1, 3, 3, 7]);
 }
 
 #[tokio::test]
@@ -371,7 +376,7 @@ async fn peer_disconnects_then_async_notification_is_sent() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -391,7 +396,7 @@ async fn peer_disconnects_then_async_notification_is_sent() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -406,7 +411,7 @@ async fn peer_disconnects_then_async_notification_is_sent() {
 
 	// as per documentation, error is not reported but the notification is silently dropped
 	if let Err(error::Error::ConnectionClosed) =
-		notif.send_async_notification(&peer_id, vec![1, 3, 3, 7]).await
+		notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 7]).await
 	{
 	} else {
 		panic!("invalid state after calling `send_async_notificatio()` on closed connection")
@@ -428,7 +433,7 @@ async fn cloned_service_opening_substream_works() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif1.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -443,7 +448,7 @@ async fn cloned_service_opening_substream_works() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif2.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -469,7 +474,7 @@ async fn cloned_service_one_service_rejects_substream() {
 		if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 			notif.next_event().await
 		{
-			assert_eq!(peer_id, peer);
+			assert_eq!(peer_id, peer.into());
 			assert_eq!(handshake, vec![1, 3, 3, 7]);
 			let _ = result_tx.send(ValidationResult::Accept).unwrap();
 		} else {
@@ -483,7 +488,7 @@ async fn cloned_service_one_service_rejects_substream() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif3.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Reject).unwrap();
 	} else {
@@ -509,7 +514,7 @@ async fn cloned_service_opening_substream_sending_and_receiving_notifications_wo
 		if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 			notif.next_event().await
 		{
-			assert_eq!(peer_id, peer);
+			assert_eq!(peer_id, peer.into());
 			assert_eq!(handshake, vec![1, 3, 3, 7]);
 			let _ = result_tx.send(ValidationResult::Accept).unwrap();
 		} else {
@@ -531,7 +536,7 @@ async fn cloned_service_opening_substream_sending_and_receiving_notifications_wo
 			direction,
 		}) = notif.next_event().await
 		{
-			assert_eq!(peer_id, peer);
+			assert_eq!(peer_id, peer.into());
 			assert_eq!(negotiated_fallback, None);
 			assert_eq!(handshake, vec![1, 3, 3, 7]);
 			assert_eq!(direction, Direction::Inbound);
@@ -546,16 +551,16 @@ async fn cloned_service_opening_substream_sending_and_receiving_notifications_wo
 		if let Some(NotificationEvent::NotificationReceived { peer, notification }) =
 			notif.next_event().await
 		{
-			assert_eq!(peer_id, peer);
+			assert_eq!(peer_id, peer.into());
 			assert_eq!(notification, vec![1, 3, 3, 8]);
 		} else {
 			panic!("invalid event received");
 		}
 	}
 
-	for (i, notif) in vec![&mut notif1, &mut notif2, &mut notif3].iter().enumerate() {
+	for (i, notif) in vec![&mut notif1, &mut notif2, &mut notif3].iter_mut().enumerate() {
 		// send notification from each service and verify peer receives it
-		notif.send_sync_notification(&peer_id, vec![1, 3, 3, i as u8]);
+		notif.send_sync_notification(&peer_id.into(), vec![1, 3, 3, i as u8]);
 		assert_eq!(
 			sync_rx.next().await,
 			Some(NotificationsSinkMessage::Notification { message: vec![1, 3, 3, i as u8] })
@@ -568,7 +573,7 @@ async fn cloned_service_opening_substream_sending_and_receiving_notifications_wo
 	for notif in vec![&mut notif1, &mut notif2, &mut notif3] {
 		if let Some(NotificationEvent::NotificationStreamClosed { peer }) = notif.next_event().await
 		{
-			assert_eq!(peer_id, peer);
+			assert_eq!(peer_id, peer.into());
 		} else {
 			panic!("invalid event received");
 		}
@@ -588,7 +593,7 @@ async fn sending_notifications_using_notifications_sink_works() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -608,7 +613,7 @@ async fn sending_notifications_using_notifications_sink_works() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -617,7 +622,7 @@ async fn sending_notifications_using_notifications_sink_works() {
 	}
 
 	// get a copy of the notification sink and send a synchronous notification using.
-	let sink = notif.message_sink(&peer_id).unwrap();
+	let sink = notif.message_sink(&peer_id.into()).unwrap();
 	sink.send_sync_notification(vec![1, 3, 3, 6]);
 
 	// send an asynchronous notification using the acquired notifications sink.
@@ -633,8 +638,8 @@ async fn sending_notifications_using_notifications_sink_works() {
 	);
 
 	// send notifications using the stored notification sink as well.
-	notif.send_sync_notification(&peer_id, vec![1, 3, 3, 8]);
-	notif.send_async_notification(&peer_id, vec![1, 3, 3, 9]).await.unwrap();
+	notif.send_sync_notification(&peer_id.into(), vec![1, 3, 3, 8]);
+	notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 9]).await.unwrap();
 
 	assert_eq!(
 		sync_rx.next().await,
@@ -649,7 +654,7 @@ async fn sending_notifications_using_notifications_sink_works() {
 #[test]
 fn try_to_get_notifications_sink_for_non_existent_peer() {
 	let (_proto, notif) = notification_service("/proto/1".into());
-	assert!(notif.message_sink(&PeerId::random()).is_none());
+	assert!(notif.message_sink(&sc_network_types::PeerId::random()).is_none());
 }
 
 #[tokio::test]
@@ -665,7 +670,7 @@ async fn notification_sink_replaced() {
 	if let Some(NotificationEvent::ValidateInboundSubstream { peer, handshake, result_tx }) =
 		notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		let _ = result_tx.send(ValidationResult::Accept).unwrap();
 	} else {
@@ -685,7 +690,7 @@ async fn notification_sink_replaced() {
 		direction,
 	}) = notif.next_event().await
 	{
-		assert_eq!(peer_id, peer);
+		assert_eq!(peer_id, peer.into());
 		assert_eq!(negotiated_fallback, None);
 		assert_eq!(handshake, vec![1, 3, 3, 7]);
 		assert_eq!(direction, Direction::Inbound);
@@ -694,7 +699,7 @@ async fn notification_sink_replaced() {
 	}
 
 	// get a copy of the notification sink and send a synchronous notification using.
-	let sink = notif.message_sink(&peer_id).unwrap();
+	let sink = notif.message_sink(&peer_id.into()).unwrap();
 	sink.send_sync_notification(vec![1, 3, 3, 6]);
 
 	// send an asynchronous notification using the acquired notifications sink.
@@ -710,8 +715,8 @@ async fn notification_sink_replaced() {
 	);
 
 	// send notifications using the stored notification sink as well.
-	notif.send_sync_notification(&peer_id, vec![1, 3, 3, 8]);
-	notif.send_async_notification(&peer_id, vec![1, 3, 3, 9]).await.unwrap();
+	notif.send_sync_notification(&peer_id.into(), vec![1, 3, 3, 8]);
+	notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 9]).await.unwrap();
 
 	assert_eq!(
 		sync_rx.next().await,
@@ -740,8 +745,8 @@ async fn notification_sink_replaced() {
 
 	// verify that using the `NotificationService` API automatically results in using the correct
 	// sink
-	notif.send_sync_notification(&peer_id, vec![1, 3, 3, 8]);
-	notif.send_async_notification(&peer_id, vec![1, 3, 3, 9]).await.unwrap();
+	notif.send_sync_notification(&peer_id.into(), vec![1, 3, 3, 8]);
+	notif.send_async_notification(&peer_id.into(), vec![1, 3, 3, 9]).await.unwrap();
 
 	assert_eq!(
 		new_sync_rx.next().await,

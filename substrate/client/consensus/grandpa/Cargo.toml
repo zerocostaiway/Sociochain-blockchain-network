@@ -37,6 +37,7 @@ sc-consensus = { path = "../common" }
 sc-network = { path = "../../network" }
 sc-network-gossip = { path = "../../network-gossip" }
 sc-network-common = { path = "../../network/common" }
+sc-network-types = { path = "../../network/types" }
 sc-telemetry = { path = "../../telemetry" }
 sc-utils = { path = "../../utils" }
 sp-api = { path = "../../../primitives/api" }

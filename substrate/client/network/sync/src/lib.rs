@@ -37,7 +37,6 @@ use crate::{
 
 use codec::Encode;
 use extra_requests::ExtraRequests;
-use libp2p::PeerId;
 use log::{debug, error, info, trace, warn};
 
 use prometheus_endpoint::{register, Counter, PrometheusError, Registry, U64};
@@ -55,6 +54,7 @@ use sc_network_common::sync::{
 	BadPeer, ChainSync as ChainSyncT, Metrics, OnBlockData, OnBlockJustification, OnStateData,
 	OpaqueStateRequest, OpaqueStateResponse, PeerInfo, SyncMode, SyncState, SyncStatus,
 };
+use sc_network_types::PeerId;
 use sp_arithmetic::traits::Saturating;
 use sp_blockchain::{Error as ClientError, HeaderBackend, HeaderMetadata};
 use sp_consensus::{BlockOrigin, BlockStatus};

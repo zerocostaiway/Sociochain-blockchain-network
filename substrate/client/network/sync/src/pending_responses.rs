@@ -25,13 +25,15 @@ use futures::{
 	stream::{BoxStream, Stream},
 	FutureExt, StreamExt,
 };
-use libp2p::PeerId;
 use log::error;
+use tokio_stream::StreamMap;
+
 use sc_network::request_responses::RequestFailure;
 use sc_network_common::sync::PeerRequest;
+use sc_network_types::PeerId;
 use sp_runtime::traits::Block as BlockT;
+
 use std::task::{Context, Poll};
-use tokio_stream::StreamMap;
 
 /// Response result.
 type ResponseResult = Result<Result<Vec<u8>, RequestFailure>, oneshot::Canceled>;

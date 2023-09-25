@@ -21,12 +21,13 @@
 use crate::block_relay_protocol::{BlockDownloader as BlockDownloaderT, BlockResponseError};
 
 use futures::channel::oneshot;
-use sc_network::{PeerId, RequestFailure};
+use sc_network::RequestFailure;
 use sc_network_common::sync::{
 	message::{BlockAnnounce, BlockData, BlockRequest, BlockResponse},
 	BadPeer, ChainSync as ChainSyncT, Metrics, OnBlockData, OnBlockJustification, PeerInfo,
 	SyncStatus,
 };
+use sc_network_types::PeerId;
 use sp_runtime::traits::{Block as BlockT, NumberFor};
 
 mockall::mock! {

@@ -44,8 +44,9 @@ use rand::{seq::SliceRandom, thread_rng};
 
 use sc_network::{
 	event::DhtEvent, multiaddr, KademliaKey, Multiaddr, NetworkDHTProvider, NetworkSigner,
-	NetworkStateInfo, PeerId, Signature,
+	NetworkStateInfo, Signature,
 };
+use sc_network_types::PeerId;
 use sp_api::{ApiError, ProvideRuntimeApi};
 use sp_authority_discovery::{
 	AuthorityDiscoveryApi, AuthorityId, AuthorityPair, AuthoritySignature,
@@ -554,7 +555,8 @@ where
 						.map_err(Error::ParsingLibp2pIdentity)?;
 					let signature = Signature { public_key, bytes: peer_signature.signature };
 
-					if !signature.verify(record, &remote_peer_id) {
+					// TODO: fix
+					if !signature.verify(record, &remote_peer_id.into()) {
 						return Err(Error::VerifyingDhtPayload)
 					}
 				} else if self.strict_record_validation {

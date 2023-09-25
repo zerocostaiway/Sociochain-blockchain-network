@@ -69,9 +69,10 @@ pub use self::{
 
 use sc_network::{
 	multiaddr, types::ProtocolName, NetworkBlock, NetworkEventStream, NetworkNotification,
-	NetworkPeers, PeerId,
+	NetworkPeers,
 };
 use sc_network_common::sync::SyncEventStream;
+use sc_network_types::PeerId;
 use sp_runtime::traits::{Block as BlockT, NumberFor};
 use std::iter;
 

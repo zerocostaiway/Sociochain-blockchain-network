@@ -21,8 +21,8 @@
 use crate::futures_stream::FuturesStream;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use log::{debug, error, trace, warn};
-use sc_network::PeerId;
 use sc_network_common::sync::message::BlockAnnounce;
+use sc_network_types::PeerId;
 use sp_consensus::block_validation::Validation;
 use sp_runtime::traits::{Block as BlockT, Header, Zero};
 use std::{
@@ -304,7 +304,7 @@ impl<B: BlockT> Stream for BlockAnnounceValidator<B> {
 mod tests {
 	use super::*;
 	use crate::block_announce_validator::AllocateSlotForBlockAnnounceValidation;
-	use sc_network::PeerId;
+	use sc_network_types::PeerId;
 	use sp_consensus::block_validation::DefaultBlockAnnounceValidator;
 	use substrate_test_runtime_client::runtime::Block;
 

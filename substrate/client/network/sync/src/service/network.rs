@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use futures::{channel::oneshot, StreamExt};
-use sc_network::PeerId;
+use sc_network_types::PeerId;
 
 use sc_network::{
 	request_responses::{IfDisconnected, RequestFailure},

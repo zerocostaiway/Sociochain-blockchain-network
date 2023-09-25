@@ -31,7 +31,8 @@ pub use crate::{
 	types::ProtocolName,
 };
 
-pub use libp2p::{identity::Keypair, multiaddr, Multiaddr, PeerId};
+pub use libp2p::{identity::Keypair, multiaddr, Multiaddr};
+use sc_network_types::PeerId;
 
 use crate::peer_store::PeerStoreHandle;
 use codec::Encode;
