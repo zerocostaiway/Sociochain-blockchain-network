@@ -40,8 +40,7 @@ use futures::{
 	Stream,
 };
 
-use libp2p::{Multiaddr, PeerId};
-use sc_network::event::DhtEvent;
+use sc_network::{event::DhtEvent, Multiaddr, PeerId};
 use sp_authority_discovery::AuthorityId;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block as BlockT;

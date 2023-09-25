@@ -30,15 +30,14 @@ use crate::config::*;
 
 use codec::{Decode, Encode};
 use futures::{channel::oneshot, prelude::*, stream::FuturesUnordered, FutureExt};
-use libp2p::{multiaddr, PeerId};
 use prometheus_endpoint::{register, Counter, PrometheusError, Registry, U64};
 use sc_network::{
 	config::{NonDefaultSetConfig, NonReservedPeerMode, SetConfig},
-	error,
+	error, multiaddr,
 	service::traits::{NotificationEvent, NotificationService, ValidationResult},
 	types::ProtocolName,
 	utils::{interval, LruHashSet},
-	NetworkEventStream, NetworkNotification, NetworkPeers,
+	NetworkEventStream, NetworkNotification, NetworkPeers, PeerId,
 };
 use sc_network_common::{
 	role::ObservedRole,

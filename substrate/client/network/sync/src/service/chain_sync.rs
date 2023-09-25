@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use futures::{channel::oneshot, Stream};
-use libp2p::PeerId;
+use sc_network::PeerId;
 
 use sc_consensus::{BlockImportError, BlockImportStatus, JustificationSyncLink, Link};
 use sc_network::{NetworkBlock, NetworkSyncForkRequest};

@@ -17,8 +17,10 @@
 //! Block relay protocol related definitions.
 
 use futures::channel::oneshot;
-use libp2p::PeerId;
-use sc_network::request_responses::{ProtocolConfig, RequestFailure};
+use sc_network::{
+	request_responses::{ProtocolConfig, RequestFailure},
+	PeerId,
+};
 use sc_network_common::sync::message::{BlockData, BlockRequest};
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;

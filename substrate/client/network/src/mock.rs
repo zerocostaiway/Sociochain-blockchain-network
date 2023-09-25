@@ -19,7 +19,7 @@
 //! Mocked components for tests.
 
 use crate::{peer_store::PeerStoreProvider, protocol_controller::ProtocolHandle, ReputationChange};
-use libp2p::PeerId;
+use sc_network::PeerId;
 use sc_network_common::role::ObservedRole;
 use std::collections::HashSet;
 

@@ -30,8 +30,8 @@ use crate::config::*;
 
 use codec::{Decode, Encode};
 use futures::{prelude::*, stream::FuturesUnordered};
-use libp2p::{multiaddr, PeerId};
 use log::{debug, trace, warn};
+use sc_network::{multiaddr, PeerId};
 
 use prometheus_endpoint::{register, Counter, PrometheusError, Registry, U64};
 use sc_network::{

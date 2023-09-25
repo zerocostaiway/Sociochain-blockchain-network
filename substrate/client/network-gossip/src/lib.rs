@@ -67,9 +67,9 @@ pub use self::{
 	validator::{DiscardAll, MessageIntent, ValidationResult, Validator, ValidatorContext},
 };
 
-use libp2p::{multiaddr, PeerId};
 use sc_network::{
-	types::ProtocolName, NetworkBlock, NetworkEventStream, NetworkNotification, NetworkPeers,
+	multiaddr, types::ProtocolName, NetworkBlock, NetworkEventStream, NetworkNotification,
+	NetworkPeers, PeerId,
 };
 use sc_network_common::sync::SyncEventStream;
 use sp_runtime::traits::{Block as BlockT, NumberFor};

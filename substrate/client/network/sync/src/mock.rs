@@ -21,8 +21,7 @@
 use crate::block_relay_protocol::{BlockDownloader as BlockDownloaderT, BlockResponseError};
 
 use futures::channel::oneshot;
-use libp2p::PeerId;
-use sc_network::RequestFailure;
+use sc_network::{PeerId, RequestFailure};
 use sc_network_common::sync::{
 	message::{BlockAnnounce, BlockData, BlockRequest, BlockResponse},
 	BadPeer, ChainSync as ChainSyncT, Metrics, OnBlockData, OnBlockJustification, PeerInfo,

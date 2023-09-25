@@ -25,13 +25,10 @@ use crate::{
 };
 
 use futures::{channel::mpsc::channel, executor::LocalPool, task::LocalSpawn};
-use libp2p::{
-	core::multiaddr::{Multiaddr, Protocol},
-	identity::ed25519,
-	PeerId,
-};
+use libp2p::identity::ed25519;
 use std::{collections::HashSet, sync::Arc};
 
+use sc_network::{multiaddr::Protocol, Multiaddr, PeerId};
 use sp_authority_discovery::AuthorityId;
 use sp_core::crypto::key_types;
 use sp_keystore::{testing::MemoryKeystore, Keystore};

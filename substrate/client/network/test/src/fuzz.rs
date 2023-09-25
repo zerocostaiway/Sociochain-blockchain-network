@@ -20,7 +20,6 @@
 //! and `PeerStore` to discover possible inconsistencies in peer management.
 
 use futures::prelude::*;
-use libp2p::PeerId;
 use rand::{
 	distributions::{Distribution, Uniform, WeightedIndex},
 	seq::IteratorRandom,
@@ -28,7 +27,7 @@ use rand::{
 use sc_network::{
 	peer_store::{PeerStore, PeerStoreProvider},
 	protocol_controller::{IncomingIndex, Message, ProtoSetConfig, ProtocolController, SetId},
-	ReputationChange,
+	PeerId, ReputationChange,
 };
 use sc_utils::mpsc::tracing_unbounded;
 use std::collections::{HashMap, HashSet};
