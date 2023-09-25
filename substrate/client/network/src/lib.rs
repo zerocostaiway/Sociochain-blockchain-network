@@ -243,6 +243,7 @@
 //! More precise usage details are still being worked on and will likely change in the future.
 
 mod behaviour;
+mod litep2p;
 mod protocol;
 
 #[cfg(test)]
