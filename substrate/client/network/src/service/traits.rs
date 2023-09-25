@@ -21,7 +21,7 @@
 //! Traits defined by `sc-network`.
 
 use crate::{
-	config::MultiaddrWithPeerId,
+	config::{MultiaddrWithPeerId, NotificationHandshake, Params, SetConfig},
 	error,
 	event::Event,
 	request_responses::{IfDisconnected, RequestFailure},
@@ -32,12 +32,61 @@ use crate::{
 
 use futures::{channel::oneshot, Stream};
 
-use sc_network_common::role::ObservedRole;
+use sc_network_common::{role::ObservedRole, ExHashT};
 use sc_network_types::PeerId;
+use sp_runtime::traits::Block as BlockT;
 
 use std::{collections::HashSet, fmt::Debug, future::Future, pin::Pin, sync::Arc};
 
 pub use libp2p::{identity::SigningError, kad::record::Key as KademliaKey};
+
+/// Supertrait defining the services provided by [`NetworkBackend`] service handle.
+pub trait NetworkService:
+	NetworkSigner
+	+ NetworkDHTProvider
+	+ NetworkStatusProvider
+	+ NetworkPeers
+	+ NetworkEventStream
+	+ NetworkStateInfo
+	+ NetworkRequest
+	+ Debug
+	+ Send
+	+ Sync
+{
+}
+
+/// Networking backend.
+#[async_trait::async_trait]
+pub trait NetworkBackend<B: BlockT + 'static, H: ExHashT> {
+	/// Type representing notification protocol-related configuration.
+	type NotificationProtocolConfig: Debug;
+
+	/// Type implementing `NetworkService` for the networking backend.
+	///
+	/// `NetworkService` allows other subsystems of the blockchain to interact with `sc-network`
+	/// using `NetworkService`.
+	type NetworkService<A, C>: NetworkService;
+
+	/// Create new `NetworkBackend`.
+	async fn new(params: Params<B>) -> Self
+	where
+		Self: Sized;
+
+	/// Get handle to `NetworkService` of the `NetworkBackend`.
+	fn network_service(&self) -> Self::NetworkService<B, H>;
+
+	/// Create notification protocol configuration for protocol.
+	fn notification_config(
+		protocol_name: ProtocolName,
+		fallback_names: Vec<ProtocolName>,
+		max_notification_size: u64,
+		handshake: Option<NotificationHandshake>,
+		set_config: SetConfig,
+	) -> Self::NotificationProtocolConfig;
+
+	/// Start [`NetworkBackend`] event loop.
+	async fn run(mut self);
+}
 
 /// Signer with network identity
 pub trait NetworkSigner {
