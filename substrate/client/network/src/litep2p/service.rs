@@ -20,11 +20,12 @@
 
 use crate::{
 	config::MultiaddrWithPeerId,
+	network_state::NetworkState,
 	peer_store::{PeerStoreHandle, PeerStoreProvider},
-	service::traits::NetworkService,
-	Event, IfDisconnected, NetworkDHTProvider, NetworkEventStream, NetworkPeers, NetworkRequest,
-	NetworkSigner, NetworkStateInfo, NetworkStatus, NetworkStatusProvider, ProtocolName,
-	RequestFailure, Signature,
+	service::traits::NotificationSender,
+	Event, IfDisconnected, NetworkDHTProvider, NetworkEventStream, NetworkNotification,
+	NetworkPeers, NetworkRequest, NetworkSigner, NetworkStateInfo, NetworkStatus,
+	NetworkStatusProvider, NotificationSenderError, ProtocolName, RequestFailure, Signature,
 };
 
 use codec::DecodeAll;
@@ -86,10 +87,8 @@ impl Litep2pNetworkService {
 	}
 }
 
-impl NetworkService for Litep2pNetworkService {}
-
 impl NetworkSigner for Litep2pNetworkService {
-	fn sign_with_local_identity(&self, _msg: impl AsRef<[u8]>) -> Result<Signature, SigningError> {
+	fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Signature, SigningError> {
 		let _public_key = self.keypair.public();
 		todo!();
 		// let bytes = self.keypair.sign(message.as_ref())?;
@@ -107,7 +106,6 @@ impl NetworkDHTProvider for Litep2pNetworkService {
 	}
 }
 
-// Manual implementation to avoid extra boxing here
 #[async_trait::async_trait]
 impl NetworkStatusProvider for Litep2pNetworkService {
 	async fn status(&self) -> Result<NetworkStatus, ()> {
@@ -115,6 +113,10 @@ impl NetworkStatusProvider for Litep2pNetworkService {
 		self.cmd_tx.unbounded_send(NetworkServiceCommand::Status(tx)).map_err(|_| ())?;
 
 		rx.await.map_err(|_| ())
+	}
+
+	async fn network_state(&self) -> Result<NetworkState, ()> {
+		todo!();
 	}
 }
 
@@ -237,5 +239,24 @@ impl NetworkRequest for Litep2pNetworkService {
 		_connect: IfDisconnected,
 	) {
 		todo!();
+	}
+}
+
+// NOTE: not implemented by `litep2p`
+impl NetworkNotification for Litep2pNetworkService {
+	fn write_notification(&self, _: PeerId, _: ProtocolName, _: Vec<u8>) {
+		unimplemented!();
+	}
+
+	fn notification_sender(
+		&self,
+		_: PeerId,
+		_: ProtocolName,
+	) -> Result<Box<dyn NotificationSender>, NotificationSenderError> {
+		unimplemented!();
+	}
+
+	fn set_notification_handshake(&self, _: ProtocolName, _: Vec<u8>) {
+		unimplemented!();
 	}
 }

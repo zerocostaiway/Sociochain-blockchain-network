@@ -18,12 +18,13 @@
 
 //! `Peerset` implementation for `litep2p`.
 
-use crate::ProtocolName;
+use crate::{peer_store::PeerStoreHandle, ProtocolName};
 
-use futures::{channel::mpsc::UnboundedReceiver, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 
+use litep2p::protocol::notification::ValidationResult;
 use sc_network_types::PeerId;
-use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedSender};
+use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedReceiver, TracingUnboundedSender};
 
 use std::{
 	collections::HashSet,
@@ -34,20 +35,9 @@ use std::{
 /// Logging target for the file.
 const LOG_TARGET: &str = "sub-libp2p";
 
-/// Commands emitted by [`Peerset`] to the notification protocol.
+/// Commands emitted by other subsystems of the blockchain to this [`Peerset`].
+#[derive(Debug)]
 pub enum PeersetCommand {
-	/// Open substream to peer.
-	OpenSubstream {
-		/// Peer Id.
-		peer: PeerId,
-	},
-
-	/// Close substream to peer.
-	CloseSubstream {
-		/// Peer ID.
-		peer: PeerId,
-	},
-
 	/// Set current reserved peer set.
 	///
 	/// This command removes all reserved peers that are not in `peers`.
@@ -77,6 +67,21 @@ pub enum PeersetCommand {
 	},
 }
 
+/// Commands emitted by [`Peerset`] to the notification protocol.
+pub enum PeersetNotificationCommand {
+	/// Open substream to peer.
+	OpenSubstream {
+		/// Peer Id.
+		peer: PeerId,
+	},
+
+	/// Close substream to peer.
+	CloseSubstream {
+		/// Peer ID.
+		peer: PeerId,
+	},
+}
+
 /// `Peerset` implementation.
 ///
 /// `Peerset` allows other subsystems of the blockchain to modify the connection state
@@ -84,12 +89,13 @@ pub enum PeersetCommand {
 ///
 /// `Peerset` is also responsible for maintaining the desired amount of peers the protocol is
 /// connected to by establishing outbound connections and accepting/rejecting inbound connections.
+#[derive(Debug)]
 pub struct Peerset {
 	/// Protocol name.
 	protocol: ProtocolName,
 
 	/// RX channel for receiving commands.
-	cmd_rx: UnboundedReceiver<PeersetCommand>,
+	cmd_rx: TracingUnboundedReceiver<PeersetCommand>,
 
 	/// Maximum number of outbound peers.
 	max_out: usize,
@@ -105,6 +111,9 @@ pub struct Peerset {
 
 	/// Current reserved peer set.
 	reserved_peers: HashSet<PeerId>,
+
+	/// Handle to `Peerstore`.
+	peer_store_handle: PeerStoreHandle,
 }
 
 impl Peerset {
@@ -114,8 +123,9 @@ impl Peerset {
 		max_out: usize,
 		max_in: usize,
 		reserved_peers: HashSet<PeerId>,
+		peer_store_handle: PeerStoreHandle,
 	) -> (Self, TracingUnboundedSender<PeersetCommand>) {
-		let (cmd_tx, cmd_rx) = tracing_unbounded(&format!("mpsc-peerset-{protocol}"), 100_000);
+		let (cmd_tx, cmd_rx) = tracing_unbounded("mpsc-peerset-protocol", 100_000);
 
 		(
 			Self {
@@ -126,16 +136,31 @@ impl Peerset {
 				num_in: 0usize,
 				reserved_peers,
 				cmd_rx,
+				peer_store_handle,
 			},
 			cmd_tx,
 		)
 	}
+
+	/// Report to [`Peerset`] that a substream was opened.
+	pub fn report_substream_opened(&mut self, peer: PeerId) {}
+
+	/// Report to [`Peerset`] that a substream was closed.
+	pub fn report_substream_closed(&mut self, peer: PeerId) {}
+
+	/// Report to [`Peerset`] that an inbound substream was opened and that it should validate it.
+	pub fn report_inbound_substream(&mut self, peer: PeerId) -> ValidationResult {
+		ValidationResult::Reject
+	}
+
+	/// Report to [`Peerset`] that an inbound substream was opened and that it should validate it.
+	pub fn report_substream_open_failure(&mut self, peer: PeerId) {}
 }
 
 impl Stream for Peerset {
-	type Item = PeersetCommand;
+	type Item = PeersetNotificationCommand;
 
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-		self.cmd_rx.next()
+		Poll::Ready(None)
 	}
 }
