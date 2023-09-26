@@ -21,9 +21,10 @@
 //! Traits defined by `sc-network`.
 
 use crate::{
-	config::{MultiaddrWithPeerId, NotificationHandshake, Params, SetConfig},
-	error,
+	config::{IncomingRequest, MultiaddrWithPeerId, NotificationHandshake, Params, SetConfig},
+	error::{self, Error},
 	event::Event,
+	network_state::NetworkState,
 	request_responses::{IfDisconnected, RequestFailure},
 	service::signature::Signature,
 	types::ProtocolName,
@@ -36,7 +37,7 @@ use sc_network_common::{role::ObservedRole, ExHashT};
 use sc_network_types::PeerId;
 use sp_runtime::traits::Block as BlockT;
 
-use std::{collections::HashSet, fmt::Debug, future::Future, pin::Pin, sync::Arc};
+use std::{collections::HashSet, fmt::Debug, future::Future, pin::Pin, sync::Arc, time::Duration};
 
 pub use libp2p::{identity::SigningError, kad::record::Key as KademliaKey};
 
@@ -49,40 +50,88 @@ pub trait NetworkService:
 	+ NetworkEventStream
 	+ NetworkStateInfo
 	+ NetworkRequest
-	+ Debug
+	+ NetworkNotification
 	+ Send
 	+ Sync
+	+ 'static
 {
+}
+
+impl<T> NetworkService for Arc<T> where
+	T: NetworkSigner
+		+ NetworkDHTProvider
+		+ NetworkStatusProvider
+		+ NetworkPeers
+		+ NetworkEventStream
+		+ NetworkStateInfo
+		+ NetworkRequest
+		+ NetworkNotification
+		+ Send
+		+ Sync
+		+ 'static
+{
+}
+
+/// Trait defining the required functionality from a notification protocol configuration.
+pub trait NotificationConfig: Debug {
+	/// Get access to the `SetConfig` of the notification protocol.
+	fn set_config(&self) -> &SetConfig;
+
+	/// Modifies the configuration to allow non-reserved nodes.
+	fn allow_non_reserved(&mut self, in_peers: u32, out_peers: u32);
+
+	/// Get protocol name.
+	fn protocol_name(&self) -> &ProtocolName;
+}
+
+/// Trait defining the required functionality from a request-response protocol configuration.
+pub trait RequestResponseConfig: Debug {
+	/// Get protocol name.
+	fn protocol_name(&self) -> &ProtocolName;
 }
 
 /// Networking backend.
 #[async_trait::async_trait]
-pub trait NetworkBackend<B: BlockT + 'static, H: ExHashT> {
+pub trait NetworkBackend<B: BlockT + 'static, H: ExHashT>: Send + 'static {
 	/// Type representing notification protocol-related configuration.
-	type NotificationProtocolConfig: Debug;
+	type NotificationProtocolConfig: NotificationConfig;
+
+	/// Type representing request-response protocol-related configuration.
+	type RequestResponseProtocolConfig: RequestResponseConfig;
 
 	/// Type implementing `NetworkService` for the networking backend.
 	///
 	/// `NetworkService` allows other subsystems of the blockchain to interact with `sc-network`
 	/// using `NetworkService`.
-	type NetworkService<A, C>: NetworkService;
+	type NetworkService<Block, Hash>: NetworkService + Clone;
 
 	/// Create new `NetworkBackend`.
-	async fn new(params: Params<B>) -> Self
+	fn new(params: Params<B, H, Self>) -> Result<Self, Error>
 	where
 		Self: Sized;
 
 	/// Get handle to `NetworkService` of the `NetworkBackend`.
 	fn network_service(&self) -> Self::NetworkService<B, H>;
 
-	/// Create notification protocol configuration for protocol.
+	/// Create notification protocol configuration and an associated `NotificationService`
+	/// for the protocol.
 	fn notification_config(
 		protocol_name: ProtocolName,
 		fallback_names: Vec<ProtocolName>,
 		max_notification_size: u64,
 		handshake: Option<NotificationHandshake>,
 		set_config: SetConfig,
-	) -> Self::NotificationProtocolConfig;
+	) -> (Self::NotificationProtocolConfig, Box<dyn NotificationService>);
+
+	/// Create request-response protocol configuration.
+	fn request_response_config(
+		protocol_name: ProtocolName,
+		fallback_names: Vec<ProtocolName>,
+		max_request_size: u64,
+		max_response_size: u64,
+		request_timeout: Duration,
+		inbound_queue: Option<async_channel::Sender<IncomingRequest>>,
+	) -> Self::RequestResponseProtocolConfig;
 
 	/// Start [`NetworkBackend`] event loop.
 	async fn run(mut self);
@@ -91,7 +140,7 @@ pub trait NetworkBackend<B: BlockT + 'static, H: ExHashT> {
 /// Signer with network identity
 pub trait NetworkSigner {
 	/// Signs the message with the `KeyPair` that defines the local [`PeerId`].
-	fn sign_with_local_identity(&self, msg: impl AsRef<[u8]>) -> Result<Signature, SigningError>;
+	fn sign_with_local_identity(&self, msg: Vec<u8>) -> Result<Signature, SigningError>;
 }
 
 impl<T> NetworkSigner for Arc<T>
@@ -99,7 +148,7 @@ where
 	T: ?Sized,
 	T: NetworkSigner,
 {
-	fn sign_with_local_identity(&self, msg: impl AsRef<[u8]>) -> Result<Signature, SigningError> {
+	fn sign_with_local_identity(&self, msg: Vec<u8>) -> Result<Signature, SigningError> {
 		T::sign_with_local_identity(self, msg)
 	}
 }
@@ -166,6 +215,9 @@ pub trait NetworkStatusProvider {
 	///
 	/// Returns an error if the `NetworkWorker` is no longer running.
 	async fn status(&self) -> Result<NetworkStatus, ()>;
+
+	/// TODO
+	async fn network_state(&self) -> Result<NetworkState, ()>;
 }
 
 // Manual implementation to avoid extra boxing here
@@ -182,6 +234,16 @@ where
 		Self: 'async_trait,
 	{
 		T::status(self)
+	}
+
+	fn network_state<'life0, 'async_trait>(
+		&'life0 self,
+	) -> Pin<Box<dyn Future<Output = Result<NetworkState, ()>> + Send + 'async_trait>>
+	where
+		'life0: 'async_trait,
+		Self: 'async_trait,
+	{
+		T::network_state(self)
 	}
 }
 
@@ -807,13 +869,13 @@ pub trait NotificationService: Debug + Send {
 	async fn close_substream(&mut self, peer: PeerId) -> Result<(), ()>;
 
 	/// Send synchronous `notification` to `peer`.
-	fn send_sync_notification(&self, peer: &PeerId, notification: Vec<u8>);
+	fn send_sync_notification(&mut self, peer: &PeerId, notification: Vec<u8>);
 
 	/// Send asynchronous `notification` to `peer`, allowing sender to exercise backpressure.
 	///
 	/// Returns an error if the peer doesn't exist.
 	async fn send_async_notification(
-		&self,
+		&mut self,
 		peer: &PeerId,
 		notification: Vec<u8>,
 	) -> Result<(), error::Error>;

@@ -34,12 +34,12 @@ use log::{debug, trace, warn};
 
 use prometheus_endpoint::{register, Counter, PrometheusError, Registry, U64};
 use sc_network::{
-	config::{NonDefaultSetConfig, NonReservedPeerMode, ProtocolId, SetConfig},
+	config::{NonReservedPeerMode, ProtocolId, SetConfig},
 	error, multiaddr,
 	service::traits::{NotificationEvent, NotificationService, ValidationResult},
 	types::ProtocolName,
 	utils::{interval, LruHashSet},
-	NetworkEventStream, NetworkNotification, NetworkPeers,
+	NetworkBackend, NetworkEventStream, NetworkNotification, NetworkPeers,
 };
 use sc_network_common::{
 	role::ObservedRole,
@@ -127,11 +127,15 @@ pub struct TransactionsHandlerPrototype {
 
 impl TransactionsHandlerPrototype {
 	/// Create a new instance.
-	pub fn new<Hash: AsRef<[u8]>>(
+	pub fn new<
+		Hash: AsRef<[u8]>,
+		Block: BlockT,
+		Net: NetworkBackend<Block, <Block as BlockT>::Hash>,
+	>(
 		protocol_id: ProtocolId,
 		genesis_hash: Hash,
 		fork_id: Option<&str>,
-	) -> (Self, NonDefaultSetConfig) {
+	) -> (Self, Net::NotificationProtocolConfig) {
 		let genesis_hash = genesis_hash.as_ref();
 		let protocol_name: ProtocolName = if let Some(fork_id) = fork_id {
 			format!("/{}/{}/transactions/1", array_bytes::bytes2hex("", genesis_hash), fork_id)
@@ -139,7 +143,7 @@ impl TransactionsHandlerPrototype {
 			format!("/{}/transactions/1", array_bytes::bytes2hex("", genesis_hash))
 		}
 		.into();
-		let (config, notification_service) = NonDefaultSetConfig::new(
+		let (config, notification_service) = Net::notification_config(
 			protocol_name.clone(),
 			vec![format!("/{}/transactions/1", protocol_id.as_ref()).into()],
 			MAX_TRANSACTIONS_SIZE,

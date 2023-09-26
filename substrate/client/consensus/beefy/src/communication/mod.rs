@@ -65,10 +65,15 @@ pub(crate) mod beefy_protocol_name {
 /// Returns the configuration value to put in
 /// [`sc_network::config::FullNetworkConfiguration`].
 /// For standard protocol name see [`beefy_protocol_name::gossip_protocol_name`].
-pub fn beefy_peers_set_config(
+pub fn beefy_peers_set_config<
+	B: sp_runtime::traits::Block,
+	N: sc_network::NetworkBackend<B, <B as sp_runtime::traits::Block>::Hash>,
+>(
 	gossip_protocol_name: sc_network::ProtocolName,
-) -> (sc_network::config::NonDefaultSetConfig, Box<dyn sc_network::NotificationService>) {
-	let (mut cfg, notification_service) = sc_network::config::NonDefaultSetConfig::new(
+) -> (N::NotificationProtocolConfig, Box<dyn sc_network::NotificationService>) {
+	use sc_network::service::traits::NotificationConfig;
+
+	let (mut cfg, notification_service) = N::notification_config(
 		gossip_protocol_name,
 		Vec::new(),
 		1024 * 1024,

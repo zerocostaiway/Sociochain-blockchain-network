@@ -27,14 +27,14 @@ pub use crate::{
 	request_responses::{
 		IncomingRequest, OutgoingResponse, ProtocolConfig as RequestResponseConfig,
 	},
-	service::traits::NotificationService,
+	service::traits::{NotificationConfig, NotificationService},
 	types::ProtocolName,
 };
 
 pub use libp2p::{identity::Keypair, multiaddr, Multiaddr};
 use sc_network_types::PeerId;
 
-use crate::peer_store::PeerStoreHandle;
+use crate::{peer_store::PeerStoreHandle, service::traits::NetworkBackend};
 use codec::Encode;
 use prometheus_endpoint::Registry;
 use zeroize::Zeroize;
@@ -570,6 +570,24 @@ impl NonDefaultSetConfig {
 	}
 }
 
+impl NotificationConfig for NonDefaultSetConfig {
+	fn set_config(&self) -> &SetConfig {
+		&self.set_config
+	}
+
+	/// Modifies the configuration to allow non-reserved nodes.
+	fn allow_non_reserved(&mut self, in_peers: u32, out_peers: u32) {
+		self.set_config.in_peers = in_peers;
+		self.set_config.out_peers = out_peers;
+		self.set_config.non_reserved_mode = NonReservedPeerMode::Accept;
+	}
+
+	/// Get reference to protocol name.
+	fn protocol_name(&self) -> &ProtocolName {
+		&self.protocol_name
+	}
+}
+
 /// Network service configuration.
 #[derive(Clone, Debug)]
 pub struct NetworkConfiguration {
@@ -656,6 +674,9 @@ pub struct NetworkConfiguration {
 	/// a modification of the way the implementation works. Different nodes with different
 	/// configured values remain compatible with each other.
 	pub yamux_window_size: Option<u32>,
+
+	/// Networking backend used for P2P communication.
+	pub network_backend: NetworkBackendType,
 }
 
 impl NetworkConfiguration {
@@ -688,6 +709,7 @@ impl NetworkConfiguration {
 				.expect("value is a constant; constant is non-zero; qed."),
 			yamux_window_size: None,
 			ipfs_server: false,
+			network_backend: NetworkBackendType::Libp2p,
 		}
 	}
 
@@ -723,7 +745,7 @@ impl NetworkConfiguration {
 }
 
 /// Network initialization parameters.
-pub struct Params<Block: BlockT> {
+pub struct Params<Block: BlockT, H: ExHashT, N: NetworkBackend<Block, H>> {
 	/// Assigned role for our node (full, light, ...).
 	pub role: Role,
 
@@ -731,7 +753,7 @@ pub struct Params<Block: BlockT> {
 	pub executor: Box<dyn Fn(Pin<Box<dyn Future<Output = ()> + Send>>) + Send>,
 
 	/// Network layer configuration.
-	pub network_config: FullNetworkConfiguration,
+	pub network_config: FullNetworkConfiguration<Block, H, N>,
 
 	/// Peer store with known nodes, peer reputations, etc.
 	pub peer_store: PeerStoreHandle,
@@ -750,22 +772,22 @@ pub struct Params<Block: BlockT> {
 	pub metrics_registry: Option<Registry>,
 
 	/// Block announce protocol configuration
-	pub block_announce_config: NonDefaultSetConfig,
+	pub block_announce_config: N::NotificationProtocolConfig,
 }
 
 /// Full network configuration.
-pub struct FullNetworkConfiguration {
+pub struct FullNetworkConfiguration<B: BlockT + 'static, H: ExHashT, N: NetworkBackend<B, H>> {
 	/// Installed notification protocols.
-	pub(crate) notification_protocols: Vec<NonDefaultSetConfig>,
+	pub(crate) notification_protocols: Vec<N::NotificationProtocolConfig>,
 
 	/// List of request-response protocols that the node supports.
-	pub(crate) request_response_protocols: Vec<RequestResponseConfig>,
+	pub(crate) request_response_protocols: Vec<N::RequestResponseProtocolConfig>,
 
 	/// Network configuration.
 	pub network_config: NetworkConfiguration,
 }
 
-impl FullNetworkConfiguration {
+impl<B: BlockT + 'static, H: ExHashT, N: NetworkBackend<B, H>> FullNetworkConfiguration<B, H, N> {
 	/// Create new [`FullNetworkConfiguration`].
 	pub fn new(network_config: &NetworkConfiguration) -> Self {
 		Self {
@@ -776,19 +798,29 @@ impl FullNetworkConfiguration {
 	}
 
 	/// Add a notification protocol.
-	pub fn add_notification_protocol(&mut self, config: NonDefaultSetConfig) {
+	pub fn add_notification_protocol(&mut self, config: N::NotificationProtocolConfig) {
 		self.notification_protocols.push(config);
 	}
 
 	/// Get reference to installed notification protocols.
-	pub fn notification_protocols(&self) -> &Vec<NonDefaultSetConfig> {
+	pub fn notification_protocols(&self) -> &Vec<N::NotificationProtocolConfig> {
 		&self.notification_protocols
 	}
 
 	/// Add a request-response protocol.
-	pub fn add_request_response_protocol(&mut self, config: RequestResponseConfig) {
+	pub fn add_request_response_protocol(&mut self, config: N::RequestResponseProtocolConfig) {
 		self.request_response_protocols.push(config);
 	}
+}
+
+/// Network backend type.
+#[derive(Debug, Clone)]
+pub enum NetworkBackendType {
+	/// Use libp2p for P2P networking.
+	Libp2p,
+
+	/// Use litep2p for P2P networking.
+	Litep2p,
 }
 
 #[cfg(test)]

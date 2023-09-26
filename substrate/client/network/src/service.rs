@@ -29,7 +29,10 @@
 
 use crate::{
 	behaviour::{self, Behaviour, BehaviourOut},
-	config::{parse_addr, FullNetworkConfiguration, MultiaddrWithPeerId, Params, TransportConfig},
+	config::{
+		parse_addr, FullNetworkConfiguration, IncomingRequest, MultiaddrWithPeerId,
+		NonDefaultSetConfig, NotificationHandshake, Params, SetConfig, TransportConfig,
+	},
 	discovery::DiscoveryConfig,
 	error::Error,
 	event::{DhtEvent, Event},
@@ -39,19 +42,19 @@ use crate::{
 	peer_store::{PeerStoreHandle, PeerStoreProvider},
 	protocol::{self, NotifsHandlerError, Protocol, Ready},
 	protocol_controller::{self, ProtoSetConfig, ProtocolController, SetId},
-	request_responses::{IfDisconnected, RequestFailure},
+	request_responses::{IfDisconnected, ProtocolConfig as RequestResponseConfig, RequestFailure},
 	service::{
 		signature::{Signature, SigningError},
 		traits::{
-			NetworkDHTProvider, NetworkEventStream, NetworkNotification, NetworkPeers,
-			NetworkRequest, NetworkSigner, NetworkStateInfo, NetworkStatus, NetworkStatusProvider,
-			NotificationSender as NotificationSenderT, NotificationSenderError,
-			NotificationSenderReady as NotificationSenderReadyT,
+			NetworkBackend, NetworkDHTProvider, NetworkEventStream, NetworkNotification,
+			NetworkPeers, NetworkRequest, NetworkSigner, NetworkStateInfo, NetworkStatus,
+			NetworkStatusProvider, NotificationSender as NotificationSenderT,
+			NotificationSenderError, NotificationSenderReady as NotificationSenderReadyT,
 		},
 	},
 	transport,
 	types::ProtocolName,
-	Multiaddr, PeerId, ReputationChange,
+	Multiaddr, NotificationService, PeerId, ReputationChange,
 };
 
 use codec::DecodeAll;
@@ -93,6 +96,7 @@ use std::{
 		atomic::{AtomicUsize, Ordering},
 		Arc,
 	},
+	time::Duration,
 };
 
 pub use behaviour::{InboundFailure, OutboundFailure, ResponseFailure};
@@ -144,6 +148,70 @@ pub struct NetworkService<B: BlockT + 'static, H: ExHashT> {
 	_block: PhantomData<B>,
 }
 
+#[async_trait::async_trait]
+impl<B, H> NetworkBackend<B, H> for NetworkWorker<B, H>
+where
+	B: BlockT + 'static,
+	H: ExHashT,
+{
+	type NotificationProtocolConfig = NonDefaultSetConfig;
+	type RequestResponseProtocolConfig = RequestResponseConfig;
+	type NetworkService<Block, Hash> = Arc<NetworkService<B, H>>;
+
+	fn new(params: Params<B, H, Self>) -> Result<Self, Error>
+	where
+		Self: Sized,
+	{
+		NetworkWorker::new(params)
+	}
+
+	/// Get handle to `NetworkService` of the `NetworkBackend`.
+	fn network_service(&self) -> Self::NetworkService<B, H> {
+		self.service.clone()
+	}
+
+	/// Create notification protocol configuration.
+	fn notification_config(
+		protocol_name: ProtocolName,
+		fallback_names: Vec<ProtocolName>,
+		max_notification_size: u64,
+		handshake: Option<NotificationHandshake>,
+		set_config: SetConfig,
+	) -> (Self::NotificationProtocolConfig, Box<dyn NotificationService>) {
+		NonDefaultSetConfig::new(
+			protocol_name,
+			fallback_names,
+			max_notification_size,
+			handshake,
+			set_config,
+		)
+	}
+
+	/// Create request-response protocol configuration.
+	fn request_response_config(
+		protocol_name: ProtocolName,
+		fallback_names: Vec<ProtocolName>,
+		max_request_size: u64,
+		max_response_size: u64,
+		request_timeout: Duration,
+		inbound_queue: Option<async_channel::Sender<IncomingRequest>>,
+	) -> Self::RequestResponseProtocolConfig {
+		Self::RequestResponseProtocolConfig {
+			name: protocol_name,
+			fallback_names,
+			max_request_size,
+			max_response_size,
+			request_timeout,
+			inbound_queue,
+		}
+	}
+
+	/// Start [`NetworkBackend`] event loop.
+	async fn run(mut self) {
+		self.run().await
+	}
+}
+
 impl<B, H> NetworkWorker<B, H>
 where
 	B: BlockT + 'static,
@@ -154,7 +222,7 @@ where
 	/// Returns a `NetworkWorker` that implements `Future` and must be regularly polled in order
 	/// for the network processing to advance. From it, you can extract a `NetworkService` using
 	/// `worker.service()`. The `NetworkService` can be shared through the codebase.
-	pub fn new(params: Params<B>) -> Result<Self, Error> {
+	pub fn new(params: Params<B, H, Self>) -> Result<Self, Error> {
 		let FullNetworkConfiguration {
 			notification_protocols,
 			request_response_protocols,
@@ -813,8 +881,8 @@ where
 	B: sp_runtime::traits::Block,
 	H: ExHashT,
 {
-	fn sign_with_local_identity(&self, msg: impl AsRef<[u8]>) -> Result<Signature, SigningError> {
-		Signature::sign_message(msg.as_ref(), &self.local_identity)
+	fn sign_with_local_identity(&self, msg: Vec<u8>) -> Result<Signature, SigningError> {
+		Signature::sign_message(AsRef::<[u8]>::as_ref(&msg), &self.local_identity)
 	}
 }
 
@@ -858,6 +926,10 @@ where
 			// The channel can only be closed if the network worker no longer exists.
 			Err(_) => Err(()),
 		}
+	}
+
+	async fn network_state(&self) -> Result<NetworkState, ()> {
+		todo!();
 	}
 }
 
@@ -1834,7 +1906,7 @@ where
 {
 }
 
-fn ensure_addresses_consistent_with_transport<'a>(
+pub(crate) fn ensure_addresses_consistent_with_transport<'a>(
 	addresses: impl Iterator<Item = &'a Multiaddr>,
 	transport: &TransportConfig,
 ) -> Result<(), Error> {

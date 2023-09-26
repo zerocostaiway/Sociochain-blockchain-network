@@ -36,6 +36,7 @@
 
 use crate::{
 	peer_store::{PeerStoreProvider, BANNED_THRESHOLD},
+	service::traits::RequestResponseConfig as RequestResponseConfigT,
 	types::ProtocolName,
 	ReputationChange,
 };
@@ -126,6 +127,12 @@ pub struct ProtocolConfig {
 	/// advertise support for this protocol, but any incoming request will lead to an error being
 	/// sent back.
 	pub inbound_queue: Option<async_channel::Sender<IncomingRequest>>,
+}
+
+impl RequestResponseConfigT for ProtocolConfig {
+	fn protocol_name(&self) -> &ProtocolName {
+		&self.name
+	}
 }
 
 /// A single request received by a peer on a request-response protocol.

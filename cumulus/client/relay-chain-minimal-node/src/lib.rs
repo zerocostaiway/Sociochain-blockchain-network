@@ -31,7 +31,9 @@ use polkadot_node_subsystem_util::metrics::prometheus::Registry;
 use polkadot_primitives::CollatorPair;
 
 use sc_authority_discovery::Service as AuthorityDiscoveryService;
-use sc_network::{config::FullNetworkConfiguration, Event, NetworkEventStream, NetworkService};
+use sc_network::{
+	config::FullNetworkConfiguration, Event, NetworkBackend, NetworkEventStream, NetworkService,
+};
 use sc_service::{Configuration, TaskManager};
 use sp_runtime::{app_crypto::Pair, traits::Block as BlockT};
 
@@ -233,9 +235,12 @@ async fn new_minimal_relay_chain(
 	Ok(NewMinimalNode { task_manager, overseer_handle, network })
 }
 
-fn build_request_response_protocol_receivers(
+fn build_request_response_protocol_receivers<
+	Block: BlockT,
+	Network: NetworkBackend<Block, <Block as BlockT>::Hash>,
+>(
 	request_protocol_names: &ReqProtocolNames,
-	config: &mut FullNetworkConfiguration,
+	config: &mut FullNetworkConfiguration<Block, <Block as BlockT>::Hash, Network>,
 ) -> (
 	IncomingRequestReceiver<v1::CollationFetchingRequest>,
 	IncomingRequestReceiver<v2::CollationFetchingRequest>,

@@ -25,16 +25,16 @@ use sc_network::{
 	NetworkService,
 };
 
-use sc_network::{config::FullNetworkConfiguration, NotificationService};
+use sc_network::{config::FullNetworkConfiguration, NetworkBackend, NotificationService};
 use sc_network_common::{role::Roles, sync::message::BlockAnnouncesHandshake};
 use sc_service::{error::Error, Configuration, NetworkStarter, SpawnTaskHandle};
 
 use std::{iter, sync::Arc};
 
 /// Build the network service, the network status sinks and an RPC sender.
-pub(crate) fn build_collator_network(
+pub(crate) fn build_collator_network<Network: NetworkBackend<Block, Hash>>(
 	config: &Configuration,
-	network_config: FullNetworkConfiguration,
+	network_config: FullNetworkConfiguration<Block, Hash, Network>,
 	spawn_handle: SpawnTaskHandle,
 	genesis_hash: Hash,
 	best_header: Header,
@@ -43,27 +43,28 @@ pub(crate) fn build_collator_network(
 	Error,
 > {
 	let protocol_id = config.protocol_id();
-	let (block_announce_config, _notification_service) = get_block_announce_proto_config::<Block>(
-		protocol_id.clone(),
-		&None,
-		Roles::from(&config.role),
-		best_header.number,
-		best_header.hash(),
-		genesis_hash,
-	);
+	let (block_announce_config, _notification_service) =
+		get_block_announce_proto_config::<Block, Network>(
+			protocol_id.clone(),
+			&None,
+			Roles::from(&config.role),
+			best_header.number,
+			best_header.hash(),
+			genesis_hash,
+		);
 
 	let peer_store = PeerStore::new(
 		network_config
 			.network_config
 			.boot_nodes
 			.iter()
-			.map(|bootnode| bootnode.peer_id)
+			.map(|bootnode| bootnode.peer_id.into())
 			.collect(),
 	);
 	let peer_store_handle = peer_store.handle();
 	spawn_handle.spawn("peer-store", Some("networking"), peer_store.run());
 
-	let network_params = sc_network::config::Params::<Block> {
+	let network_params = sc_network::config::Params::<Block, Hash, Network> {
 		role: config.role.clone(),
 		executor: {
 			let spawn_handle = Clone::clone(&spawn_handle);
@@ -122,14 +123,14 @@ impl sp_consensus::SyncOracle for SyncOracle {
 	}
 }
 
-fn get_block_announce_proto_config<B: BlockT>(
+fn get_block_announce_proto_config<B: BlockT, Network: NetworkBackend<B, <B as BlockT>::Hash>>(
 	protocol_id: ProtocolId,
 	fork_id: &Option<String>,
 	roles: Roles,
 	best_number: NumberFor<B>,
 	best_hash: B::Hash,
 	genesis_hash: B::Hash,
-) -> (NonDefaultSetConfig, Box<dyn NotificationService>) {
+) -> (Network::NotificationProtocolConfig, Box<dyn NotificationService>) {
 	let block_announces_protocol = {
 		let genesis_hash = genesis_hash.as_ref();
 		if let Some(ref fork_id) = fork_id {
@@ -139,7 +140,7 @@ fn get_block_announce_proto_config<B: BlockT>(
 		}
 	};
 
-	NonDefaultSetConfig::new(
+	Network::notification_config(
 		block_announces_protocol.into(),
 		iter::once(format!("/{}/block-announces/1", protocol_id.as_ref()).into()).collect(),
 		1024 * 1024,

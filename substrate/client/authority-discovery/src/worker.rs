@@ -659,7 +659,7 @@ fn sign_record_with_peer_id(
 	network: &impl NetworkSigner,
 ) -> Result<schema::PeerSignature> {
 	let signature = network
-		.sign_with_local_identity(serialized_record)
+		.sign_with_local_identity(serialized_record.to_vec())
 		.map_err(|e| Error::CannotSign(format!("{} (network packet)", e)))?;
 	let public_key = signature.public_key.encode_protobuf();
 	let signature = signature.bytes;

@@ -21,6 +21,8 @@ libp2p = "0.51.3"
 log = "0.4.17"
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", path = "../../../utils/prometheus" }
 sc-network-common = { path = "../common" }
+sc-network-types = { path = "../types" }
 sc-network = { path = ".." }
 sp-consensus = { path = "../../../primitives/consensus/common" }
+sp-runtime = { path = "../../../primitives/runtime" }
 sp-statement-store = { path = "../../../primitives/statement-store" }
