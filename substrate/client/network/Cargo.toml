@@ -51,7 +51,7 @@ sp-blockchain = { path = "../../primitives/blockchain" }
 sp-core = { path = "../../primitives/core" }
 sp-runtime = { path = "../../primitives/runtime" }
 wasm-timer = "0.2"
-litep2p = { path = "/home/altonen/code/litep2p" }
+litep2p = { path = "/home/altonen/code/rust/litep2p" }
 
 [dev-dependencies]
 assert_matches = "1.3"

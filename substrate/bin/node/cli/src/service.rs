@@ -31,7 +31,7 @@ use node_primitives::Block;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_executor::NativeElseWasmExecutor;
-use sc_network::{event::Event, NetworkEventStream, NetworkService};
+use sc_network::{event::Event, NetworkEventStream, service::traits::NetworkService};
 use sc_network_sync::{warp::WarpSyncParams, SyncingService};
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
 use sc_statement_store::Store as StatementStore;
@@ -314,7 +314,7 @@ pub struct NewFullBase {
 	/// The client instance of the node.
 	pub client: Arc<FullClient>,
 	/// The networking service of the node.
-	pub network: Arc<NetworkService<Block, <Block as BlockT>::Hash>>,
+	pub network: Arc<dyn NetworkService>,
 	/// The syncing service of the node.
 	pub sync: Arc<SyncingService<Block>>,
 	/// The transaction pool of the node.
@@ -406,7 +406,7 @@ pub fn new_full_base(
 		backend: backend.clone(),
 		client: client.clone(),
 		keystore: keystore_container.keystore(),
-		network: network.clone(),
+		network: Arc::new(network.clone()), // TODO: get rid of if possible
 		rpc_builder: Box::new(rpc_builder),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
@@ -511,7 +511,7 @@ pub fn new_full_base(
 					..Default::default()
 				},
 				client.clone(),
-				network.clone(),
+				Arc::new(network.clone()), // TODO: get rid of if possible
 				Box::pin(dht_event_stream),
 				authority_discovery_role,
 				prometheus_registry.clone(),
@@ -600,7 +600,7 @@ pub fn new_full_base(
 				transaction_pool: Some(OffchainTransactionPoolFactory::new(
 					transaction_pool.clone(),
 				)),
-				network_provider: network.clone(),
+				network_provider: Arc::new(network.clone()), // TODO: get rid of if possible
 				is_validator: role.is_authority(),
 				enable_http_requests: true,
 				custom_extensions: move |_| {
@@ -616,7 +616,7 @@ pub fn new_full_base(
 	Ok(NewFullBase {
 		task_manager,
 		client,
-		network,
+		network: network,
 		sync: sync_service,
 		transaction_pool,
 		rpc_handlers,

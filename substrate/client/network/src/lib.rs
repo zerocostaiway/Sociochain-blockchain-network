@@ -263,8 +263,8 @@ pub mod transport;
 pub mod types;
 pub mod utils;
 
+pub use crate::litep2p::Litep2pNetworkBackend;
 pub use event::{DhtEvent, Event};
-pub use litep2p::Litep2pNetworkBackend;
 #[doc(inline)]
 pub use request_responses::{Config, IfDisconnected, RequestFailure};
 pub use sc_network_common::{
