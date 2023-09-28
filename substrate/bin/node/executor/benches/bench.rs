@@ -22,9 +22,9 @@ use kitchensink_runtime::{
 	constants::currency::*, Block, BuildStorage, CheckedExtrinsic, Header, RuntimeCall,
 	RuntimeGenesisConfig, UncheckedExtrinsic,
 };
-use node_executor::ExecutorDispatch;
 use node_primitives::{BlockNumber, Hash};
 use node_testing::keyring::*;
+use polkadot_node_executor::ExecutorDispatch;
 use sc_executor::{
 	Externalities, NativeElseWasmExecutor, RuntimeVersionOf, WasmExecutionMethod, WasmExecutor,
 	WasmtimeInstantiationStrategy,
