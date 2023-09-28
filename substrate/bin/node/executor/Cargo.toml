@@ -1,5 +1,5 @@
 [package]
-name = "node-executor"
+name = "polkadot-node-executor"
 version = "3.0.0-dev"
 authors.workspace = true
 description = "Substrate node implementation in Rust."
@@ -7,7 +7,6 @@ edition.workspace = true
 license = "Apache-2.0"
 homepage = "https://substrate.io"
 repository.workspace = true
-publish = false
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
