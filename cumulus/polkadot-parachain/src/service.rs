@@ -1397,6 +1397,204 @@ where
 	.await
 }
 
+use cumulus_client_collator::Collator;
+use futures::prelude::*;
+use sp_api::ProvideRuntimeApi;
+
+/// Start an aura powered parachain node. Asset Hub and Collectives use this.
+pub async fn new_start_generic_aura_node<RuntimeApi, AuraId: AppCrypto + Send + Codec + Sync>(
+	parachain_config: Configuration,
+	polkadot_config: Configuration,
+	collator_options: CollatorOptions,
+	para_id: ParaId,
+	hwbench: Option<sc_sysinfo::HwBench>,
+) -> sc_service::error::Result<(TaskManager, Arc<ParachainClient<RuntimeApi>>)>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, ParachainClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::Metadata<Block>
+		+ sp_session::SessionKeys<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ cumulus_primitives_core::CollectCollationInfo<Block>
+		+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
+		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
+		+ frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
+	<<AuraId as AppCrypto>::Pair as Pair>::Signature:
+		TryFrom<Vec<u8>> + std::hash::Hash + sp_runtime::traits::Member + Codec,
+{
+	start_node_impl::<RuntimeApi, _, _, _>(
+		parachain_config,
+		polkadot_config,
+		collator_options,
+		CollatorSybilResistance::Resistant, // Aura
+		para_id,
+		|_| Ok(RpcModule::new(())),
+		aura_build_import_queue::<_, AuraId>,
+		|client,
+		 block_import,
+		 prometheus_registry,
+		 telemetry,
+		 task_manager,
+		 relay_chain_interface,
+		 transaction_pool,
+		 sync_oracle,
+		 keystore,
+		 relay_chain_slot_duration,
+		 para_id,
+		 collator_key,
+		 overseer_handle,
+		 announce_block| {
+			// let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool,
+				prometheus_registry,
+				telemetry,
+			);
+			let relay_chain_interface2 = relay_chain_interface.clone();
+
+			let free_for_all = cumulus_client_consensus_relay_chain::build_relay_chain_consensus(
+				cumulus_client_consensus_relay_chain::BuildRelayChainConsensusParams {
+					para_id,
+					proposer_factory,
+					block_import,
+					relay_chain_interface: relay_chain_interface.clone(),
+					create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+						let relay_chain_interface = relay_chain_interface.clone();
+						async move {
+							let parachain_inherent =
+							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
+								relay_parent,
+								&relay_chain_interface,
+								&validation_data,
+								para_id,
+							).await;
+							let parachain_inherent = parachain_inherent.ok_or_else(|| {
+								Box::<dyn std::error::Error + Send + Sync>::from(
+									"Failed to create parachain inherent",
+								)
+							})?;
+							Ok(parachain_inherent)
+						}
+					},
+				},
+			);
+
+			let spawner = task_manager.spawn_handle();
+
+			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool,
+				prometheus_registry,
+				telemetry.clone(),
+			);
+			let proposer = Proposer::new(proposer_factory);
+
+			let collator_service = CollatorService::new(
+				client.clone(),
+				Arc::new(task_manager.spawn_handle()),
+				announce_block,
+				client.clone(),
+			);
+
+			// old_consensus::start_collator_sync(old_consensus::StartCollatorParams {
+			// 	para_id,
+			// 	block_status: client.clone(),
+			// 	announce_block,
+			// 	overseer_handle,
+			// 	spawner,
+			// 	key: collator_key,
+			// 	parachain_consensus: free_for_all,
+			// 	runtime_api: client.clone(),
+			// }); UNFURLED
+			{
+				let collator_service = CollatorService::new(
+					client.clone(),
+					Arc::new(spawner.clone()),
+					announce_block,
+					client.clone(),
+				);
+
+				let collator = Collator::new(collator_service, free_for_all);
+
+				let collation_future = Box::pin(async move {
+					let mut request_stream = cumulus_client_collator::relay_chain_driven::init(
+						collator_key,
+						para_id,
+						overseer_handle,
+					)
+					.await;
+					while let Some(request) = request_stream.next().await {
+						let parent_hash =
+							relay_chain_interface2.finalized_block_hash().await.unwrap();
+						if client
+							.runtime_api()
+							.has_api::<dyn AuraApi<Block, AuraId>>(parent_hash)
+							.unwrap_or(false)
+						{
+							break
+						}
+
+						let collation = collator
+							.clone()
+							.produce_candidate(
+								*request.relay_parent(),
+								request.persisted_validation_data().clone(),
+							)
+							.await;
+
+						request.complete(collation);
+					}
+
+					let slot_duration =
+						cumulus_client_consensus_aura::slot_duration(&*client).unwrap();
+					let collator_service = CollatorService::new(
+						client.clone(),
+						Arc::new(spawner.clone()),
+						announce_block,
+						client.clone(),
+					);
+					let params = BasicAuraParams {
+						create_inherent_data_providers: move |_, ()| async move { Ok(()) },
+						block_import,
+						para_client: client,
+						relay_client: relay_chain_interface,
+						sync_oracle,
+						keystore,
+						collator_key,
+						para_id,
+						overseer_handle,
+						slot_duration,
+						relay_chain_slot_duration,
+						proposer,
+						collator_service,
+						// Very limited proposal time.
+						authoring_duration: Duration::from_millis(500),
+					};
+
+					basic_aura::run::<Block, <AuraId as AppCrypto>::Pair, _, _, _, _, _, _, _>(
+						params,
+					);
+				});
+
+				spawner.spawn("cumulus-relay-driven-collator", None, collation_future);
+			}
+
+			// let fut =
+			// 	basic_aura::run::<Block, <AuraId as AppCrypto>::Pair, _, _, _, _, _, _, _>(params);
+			// task_manager.spawn_essential_handle().spawn("aura", None, fut);
+
+			Ok(())
+		},
+		hwbench,
+	)
+	.await
+}
+
 /// Start an shell powered parachain node which transitions into Aura. Asset Hub and Collectives use
 /// this.
 pub async fn start_asset_hub_node<RuntimeApi, AuraId: AppCrypto>(
