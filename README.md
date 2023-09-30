@@ -29,9 +29,22 @@ SocioChain prioritizes interoperability, ensuring seamless data exchange and col
  [![SubstrateRustDocs](https://img.shields.io/badge/Rust_Docs-Substrate-24CC85?logo=rust)](https://paritytech.github.io/substrate/master/substrate/index.html)
  [![Substrate-license](https://img.shields.io/badge/License-GPL3%2FApache2.0-blue)](./substrate/README.md#LICENSE)
 
-Substrate is the primary blockchain SDK used by developers to create the parachains that make up the Polkadot network.
-Additionally, it allows for the development of self-sovereign blockchains that operate completely independently of
-Polkadot.
+These instructions will guide you in setting up SocioChain on your local machine for development and testing purposes. To deploy SocioChain on a live network, please refer to our official documentation.
+
+#### Prerequisites
+
+Ensure you have the following prerequisites installed:
+
+•	Rust (https://www.rust-lang.org/tools/install/) and Cargo (https://doc.rust-lang.org/cargo/getting-started/installation.html)
+
+•	Substrate Node Template (https://github.com/substrate-developer-hub/substrate-node-template)
+
+•	Docker (https://docs.docker.com/get-docker/)
+
+•	Node.js (https://nodejs.org/) and Yarn  (https://classic.yarnpkg.com/en/docs/install/)
+
+•	Polkadot.js Apps (https://polkadot.js.org/apps/)
+
 
 ## [Cumulus](./cumulus/)
 [![CumulusRustDocs](https://img.shields.io/badge/Rust_Docs-Cumulus-222222?logo=rust)](https://paritytech.github.io/cumulus/cumulus_client_collator/index.html)
