@@ -191,24 +191,69 @@ Linux users can build SocioChain from source code. The detailed steps for buildi
 
 
 
-## [Cumulus](./cumulus/)
-[![CumulusRustDocs](https://img.shields.io/badge/Rust_Docs-Cumulus-222222?logo=rust)](https://paritytech.github.io/cumulus/cumulus_client_collator/index.html)
-[![Cumulus-license](https://img.shields.io/badge/License-GPL3-blue)](./cumulus/LICENSE)
+# 2. Connecting to the Network
 
-Cumulus is a set of tools for writing Substrate-based Polkadot parachains.
+SocioChain offers users the flexibility to connect to different networks based on their needs, whether it's for testing or conducting transactions on the mainnet. This section provides comprehensive information on network selection, node configuration, and monitoring network status.
 
-## Upstream Dependencies
+# Network Selection
 
-Below are the primary upstream dependencies utilized in this project:
+Available Networks
 
-- [`parity-scale-codec`](https://crates.io/crates/parity-scale-codec)
-- [`parity-db`](https://crates.io/crates/parity-db)
-- [`parity-common`](https://github.com/paritytech/parity-common)
-- [`trie`](https://github.com/paritytech/trie)
+SocioChain offers the following network options:
 
-## Security
+**Mainnet:** The main network where real transactions occur. Users should exercise caution when using real assets on the mainnet.
 
-The security policy and procedures can be found in [docs/SECURITY.md](./docs/SECURITY.md).
+**Testnets:** These are testing networks that mimic the mainnet but use test tokens. They are ideal for developers and users who want to experiment without risking real assets. SocioChain may have multiple testnets for different purposes, such as development, security testing, or feature testing.
+
+Selecting the Right Network
+
+Selecting the appropriate network is crucial:
+
+**Mainnet**: Choose the mainnet when you intend to perform real transactions, such as sending and receiving tokens, participating in governance, or interacting with live smart contracts.
+
+**Testnets**: Opt for testnets when you want to test new features, experiment with smart contracts, or develop and deploy decentralized applications (DApps). Testnets are also valuable for getting familiar with SocioChain's functionalities without financial risks.
+
+Switching Between Networks
+
+Users can easily switch between networks within SocioChain's interface. Here's how:
+
+1. Launch the SocioChain wallet or client. 
+2. In the settings or network section, choose the desired network (e.g., Mainnet or a specific testnet).
+3. Save your selection and restart the client if necessary.
+
+## Node Selection and Configuration
+
+Node Selection 
+
+To access the SocioChain network, users need to connect to nodes (servers) that maintain the blockchain. Here's how to select reliable nodes:
+
+**1. Official Nodes**: Consider connecting to nodes officially maintained by SocioChain or trusted community members. These nodes are more likely to provide stable and secure connections.
+
+**2. Geographic Location**: Select nodes that are geographically closer to your location to minimize latency and improve network performance. 
+
+**3. Community-Verified Nodes**: Some nodes in the SocioChain community are verified for reliability and security. Check the SocioChain community forums or website for a list of these nodes.
+
+Network Configuration
+
+Configuring network settings can enhance your SocioChain experience: Connection Preferences: 
+
+**1. Connection Preferences:** Configure your client or wallet to use specific nodes as preferred connections. This ensures consistent access to the network. 
+
+**2. Network Security**: Implement secure network configurations to protect your transactions and data. Use encrypted connections where available. 
+
+**3. Backup Nodes**: Always have backup nodes in your configuration in case your primary node experiences downtime or issues.
+
+## Network Status
+
+Checking the status of the SocioChain network is essential for monitoring its health and performance. Here's how to stay updated:
+
+**1. SocioChain Explorer**: SocioChain typically provides an explorer that allows users to view real-time information about blocks, transactions, validators, and network statistics. Visit the official SocioChain website or community forums to access the explorer.\
+
+**2. Community Resources**: Join the SocioChain community on platforms like Discord, Telegram, or social media. Community members often share updates and network status information. 
+
+**3. Third-Party Tools**: Some third-party websites and tools offer network monitoring services for SocioChain. These tools provide valuable insights into network health. 
+
+By understanding network selection, node configuration, and how to monitor network status, users can ensure a smooth and secure experience when interacting with SocioChain. Whether you're conducting transactions or developing DApps, these insights will help you navigate the SocioChain network effectively.
 
 ## Contributing & Code of Conduct
 
