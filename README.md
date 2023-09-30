@@ -35,7 +35,7 @@ Join us in the SocioChain revolution, where social capital fuels the digital eco
 
 **Social Capital Integration**: SocioChain redefines blockchain by integrating social capital generation activities at its core, creating a vibrant ecosystem where contributions are valued. 
 
-**Scalability**: Our innovative blockchain utilizes advanced sharding techniques and a high-performance consensus algorithm to handle a massive volume of transactions efficiently. I
+**Scalability**: Our innovative blockchain utilizes advanced sharding techniques and a high-performance consensus algorithm to handle a massive volume of transactions efficiently. 
 
 **Interoerability**: SocioChain prioritizes interoperability, ensuring seamless data exchange and collaboration with other blockchain networks.Sustainability: We are committed to environmental responsibility and have implemented an eco-conscious consensus mechanism.
 
