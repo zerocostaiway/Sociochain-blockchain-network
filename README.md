@@ -2,11 +2,12 @@
 # SocioChain Blockchain
 <a href="https://ibb.co/CKZg2Nh"><img src="https://i.ibb.co/hFjbfhD/Socio-Chain-logo-color.png" alt="Socio-Chain-logo-color" border="0"></a>
 
-[![StackExchange](https://img.shields.io/badge/StackExchange-Community%20&%20Support-222222?logo=stackexchange)](https://substrate.stackexchange.com/)
+<img alt="Static Badge" src="https://img.shields.io/badge/Introduction-blue">
+
 
 Welcome to the SocioChain blockchain – a groundbreaking platform designed to revolutionize the digital economy by making social capital the heart of our ecosystem. SocioChain empowers users to monetize their contributions and participate in a dynamic value exchange network.
 
-## [Polkadot](./polkadot/)
+## Key Features
 [![PolkadotForum](https://img.shields.io/badge/Polkadot_Forum-e6007a?logo=polkadot)](https://forum.polkadot.network/)
 [![Polkadot-license](https://img.shields.io/badge/License-GPL3-blue)](./polkadot/LICENSE)
 
