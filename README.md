@@ -50,20 +50,20 @@ Ensure you have the following prerequisites installed:
 
 #### 1. Clone the SocioChain repository:
 
-   git clone (https://github.com/zerocostaiway/Sociochain-blockchain-network.git)
-
+`   git clone (https://github.com/zerocostaiway/Sociochain-blockchain-network.git)
+`
 #### 2. Navigate to the project folder:
 
-cd sociochain
+`cd sociochain`
 
 #### 3.  Install dependencies:
    
-yarn install
+`yarn install`
 
 #### 5. Start a development chain:
    
-yarn start
-
+`yarn start
+`
 # Usage
 
 ## 1. Installation and set up
