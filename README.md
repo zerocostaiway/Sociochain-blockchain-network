@@ -47,6 +47,12 @@ Ensure you have the following prerequisites installed:
 •	[Polkadot.js Apps](https://polkadot.js.org/apps/)
 
 # Installation
+![Static Badge](https://img.shields.io/badge/Installation%20and%20set%20up-Green)
+![Static Badge](https://img.shields.io/badge/Installation%20on%20Different%20Platforms-Green)
+![Static Badge](https://img.shields.io/badge/Download%20SocioChain%20Installer-Green)
+![Static Badge](https://img.shields.io/badge/%20Run%20the%20Installer-Green)
+
+
 
 #### 1. Clone the SocioChain repository:
 
