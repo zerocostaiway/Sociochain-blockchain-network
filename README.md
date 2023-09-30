@@ -18,7 +18,7 @@ Welcome to the SocioChain blockchain – a groundbreaking platform designed to r
     Interoperability: SocioChain prioritizes interoperability, ensuring seamless data exchange and collaboration with other blockchain networks.
 
     Sustainability: We are committed to environmental responsibility and have implemented an eco-conscious consensus mechanism.
-## [Substrate](./substrate/)
+## [Getting Started](./substrate/)
  [![SubstrateRustDocs](https://img.shields.io/badge/Rust_Docs-Substrate-24CC85?logo=rust)](https://paritytech.github.io/substrate/master/substrate/index.html)
  [![Substrate-license](https://img.shields.io/badge/License-GPL3%2FApache2.0-blue)](./substrate/README.md#LICENSE)
 
