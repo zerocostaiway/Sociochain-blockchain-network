@@ -151,7 +151,43 @@ cd sociochain
 
 `cargo build --release
 `
-    
+ 
+ This process may take some time as Cargo downloads dependencies and compiles the software.
+
+### Step 3: Run SocioChain
+
+Once the build process is complete, you can run SocioChain with the following command: 
+
+`./target/release/sociochain --dev
+`
+This command starts SocioChain in development mode.
+
+**2. Prerequisites and Dependencies**
+
+Before installing SocioChain, it's essential to ensure that your system meets the necessary prerequisites and dependencies. Here's what you need:
+
+•	**Operating System**: SocioChain is compatible with Windows, macOS, and various Linux distributions.
+
+•	**Rust**: SocioChain is written in Rust, so you must install Rust on your system. You can install Rust by following the instructions on the official Rust website: [Rust Installation Guide](https://www.rust-lang.org/tools/install).
+
+•	**Substrate Developer Hub**: Substrate is the underlying framework for SocioChain. You should install Substrate Developer Hub by following the official Substrate documentation: [Substrate Installation Guide](https://substrate.dev/docs/en/knowledgebase/getting-started/installing-substrate).
+
+Please make sure to verify and meet these requirements before proceeding with SocioChain installation.
+
+**3. Installation Commands and Guides**
+
+Windows
+
+For Windows users, the installation process is straightforward. You can download the SocioChain installer from the official website and follow the on-screen instructions for installation. Detailed steps are provided in the "Installation on Different Platforms" section above.
+
+macOS
+
+For macOS users, downloading and installing SocioChain is a breeze. Download the macOS package from the official website, and a simple double-click on the package file initiates the installation process. Detailed steps are provided in the "Installation on Different Platforms" section above.
+
+Linux
+
+Linux users can build SocioChain from source code. The detailed steps for building and running SocioChain on Linux are provided in the "Installation on Different Platforms" section above. Please follow those steps carefully to ensure a successful installation. By following these installation guides and ensuring that your system meets the prerequisites, you'll be ready to interact with SocioChain on your preferred platform.
+
 
 
 
