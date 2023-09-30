@@ -1,17 +1,10 @@
-> NOTE: We have recently made significant changes to our repository structure. In order to streamline our development
-process and foster better contributions, we have merged three separate repositories Cumulus, Substrate and Polkadot into
-this repository. Read more about the changes [
-here](https://polkadot-public.notion.site/Polkadot-SDK-FAQ-fbc4cecc2c46443fb37b9eeec2f0d85f).
 
-# Polkadot SDK
-
-![](https://cms.polkadot.network/content/images/2021/06/1-xPcVR_fkITd0ssKBvJ3GMw.png)
+# SocioChain Blockchain
+<a href="https://ibb.co/CKZg2Nh"><img src="https://i.ibb.co/hFjbfhD/Socio-Chain-logo-color.png" alt="Socio-Chain-logo-color" border="0"></a>
 
 [![StackExchange](https://img.shields.io/badge/StackExchange-Community%20&%20Support-222222?logo=stackexchange)](https://substrate.stackexchange.com/)
 
-The Polkadot SDK repository provides all the resources needed to start building on the Polkadot network, a multi-chain
-blockchain platform that enables different blockchains to interoperate and share information in a secure and scalable
-way. The Polkadot SDK comprises three main pieces of software:
+Welcome to the SocioChain blockchain – a groundbreaking platform designed to revolutionize the digital economy by making social capital the heart of our ecosystem. SocioChain empowers users to monetize their contributions and participate in a dynamic value exchange network.
 
 ## [Polkadot](./polkadot/)
 [![PolkadotForum](https://img.shields.io/badge/Polkadot_Forum-e6007a?logo=polkadot)](https://forum.polkadot.network/)
