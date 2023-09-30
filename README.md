@@ -33,17 +33,12 @@ Join us in the SocioChain revolution, where social capital fuels the digital eco
 
 
 
-#### Social Capital Integration: 
+**Social Capital Integration**: SocioChain redefines blockchain by integrating social capital generation activities at its core, creating a vibrant ecosystem where contributions are valued. 
 
-SocioChain redefines blockchain by integrating social capital generation activities at its core, creating a vibrant ecosystem where contributions are valued. 
+**Scalability**: Our innovative blockchain utilizes advanced sharding techniques and a high-performance consensus algorithm to handle a massive volume of transactions efficiently. I
 
-#### Scalability: 
+**Interoerability**: SocioChain prioritizes interoperability, ensuring seamless data exchange and collaboration with other blockchain networks.Sustainability: We are committed to environmental responsibility and have implemented an eco-conscious consensus mechanism.
 
-Our innovative blockchain utilizes advanced sharding techniques and a high-performance consensus algorithm to handle a massive volume of transactions efficiently. I
-
-#### Interoerability: 
-
-SocioChain prioritizes interoperability, ensuring seamless data exchange and collaboration with other blockchain networks.Sustainability: We are committed to environmental responsibility and have implemented an eco-conscious consensus mechanism.
 ## [Getting Started](./substrate/)
  [![SubstrateRustDocs](https://img.shields.io/badge/Rust_Docs-Substrate-24CC85?logo=rust)](https://paritytech.github.io/substrate/master/substrate/index.html)
  [![Substrate-license](https://img.shields.io/badge/License-GPL3%2FApache2.0-blue)](./substrate/README.md#LICENSE)
