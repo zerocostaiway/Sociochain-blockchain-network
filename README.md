@@ -36,34 +36,34 @@ These instructions will guide you in setting up SocioChain on your local machine
 
 Ensure you have the following prerequisites installed:
 
-•	Rust (https://www.rust-lang.org/tools/install/) and Cargo (https://doc.rust-lang.org/cargo/getting-started/installation.html)
+•	[Rust](https://www.rust-lang.org/tools/install/) and [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
 
-•	Substrate Node Template (https://github.com/substrate-developer-hub/substrate-node-template)
+•	[Substrate Node Template](https://github.com/substrate-developer-hub/substrate-node-template)
 
-•	Docker (https://docs.docker.com/get-docker/)
+•	[Docker](https://docs.docker.com/get-docker/)
 
-•	Node.js (https://nodejs.org/) and Yarn  (https://classic.yarnpkg.com/en/docs/install/)
+•	[Node.js](https://nodejs.org/) and [Yarn](https://classic.yarnpkg.com/en/docs/install/)
 
-•	Polkadot.js Apps (https://polkadot.js.org/apps/)
+•	[Polkadot.js Apps](https://polkadot.js.org/apps/)
 
 # Installation
 
 #### 1. Clone the SocioChain repository:
 
-   git clone (https://github.com/zerocostaiway/Sociochain-blockchain-network.git)
-
+`   git clone (https://github.com/zerocostaiway/Sociochain-blockchain-network.git)
+`
 #### 2. Navigate to the project folder:
 
-cd sociochain
-
+`cd sociochain
+`
 #### 3.  Install dependencies:
    
-yarn install
-
+`yarn install
+`
 #### 5. Start a development chain:
    
-yarn start
-
+`yarn start
+`
 # Usage
 
 ## 1. Installation and set up
