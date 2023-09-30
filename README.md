@@ -45,6 +45,52 @@ Ensure you have the following prerequisites installed:
 
 •	Polkadot.js Apps (https://polkadot.js.org/apps/)
 
+# Installation
+
+#### 1. Clone the SocioChain repository:
+
+   git clone (https://github.com/zerocostaiway/Sociochain-blockchain-network.git)
+
+#### 2. Navigate to the project folder:
+
+cd sociochain
+
+#### 3.  Install dependencies:
+   
+yarn install
+
+#### 5. Start a development chain:
+   
+yarn start
+
+# Usage
+
+## 1. Installation and set up
+
+SocioChain aims to provide a seamless experience for users across different platforms. Below, you will find comprehensive installation guides for Windows, macOS, and Linux. Before you begin, please make sure you have reviewed the prerequisites and dependencies to ensure a smooth installation process.
+
+## 1. Installation on Different Platforms
+
+Windows
+
+## Step 1: Download SocioChain Installer
+
+•	Visit the official SocioChain website at sociochain.io.
+•	Navigate to the "Downloads" section.
+•	Click on the Windows download link to download the SocioChain installer.
+
+## Step 2: Run the Installer
+
+• Locate the downloaded installer file (e.g., SocioChainInstaller.exe) in your Downloads folder. 
+
+• Double-click on the installer to run it. 
+
+• Follow the on-screen instructions to complete the installation.
+
+
+    
+
+
 
 ## [Cumulus](./cumulus/)
 [![CumulusRustDocs](https://img.shields.io/badge/Rust_Docs-Cumulus-222222?logo=rust)](https://paritytech.github.io/cumulus/cumulus_client_collator/index.html)
