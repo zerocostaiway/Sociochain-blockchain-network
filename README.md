@@ -11,10 +11,13 @@ Welcome to the SocioChain blockchain – a groundbreaking platform designed to r
 [![PolkadotForum](https://img.shields.io/badge/Polkadot_Forum-e6007a?logo=polkadot)](https://forum.polkadot.network/)
 [![Polkadot-license](https://img.shields.io/badge/License-GPL3-blue)](./polkadot/LICENSE)
 
-Implementation of a node for the https://polkadot.network in Rust, using the Substrate framework. This directory
-currently contains runtimes for the Polkadot, Kusama, Westend, and Rococo networks. In the future, these will be
-relocated to the [`runtimes`](https://github.com/polkadot-fellows/runtimes/) repository.
+    Social Capital Integration: SocioChain redefines blockchain by integrating social capital generation activities at its core, creating a vibrant ecosystem where contributions are valued.
 
+    Scalability: Our innovative blockchain utilizes advanced sharding techniques and a high-performance consensus algorithm to handle a massive volume of transactions efficiently.
+
+    Interoperability: SocioChain prioritizes interoperability, ensuring seamless data exchange and collaboration with other blockchain networks.
+
+    Sustainability: We are committed to environmental responsibility and have implemented an eco-conscious consensus mechanism.
 ## [Substrate](./substrate/)
  [![SubstrateRustDocs](https://img.shields.io/badge/Rust_Docs-Substrate-24CC85?logo=rust)](https://paritytech.github.io/substrate/master/substrate/index.html)
  [![Substrate-license](https://img.shields.io/badge/License-GPL3%2FApache2.0-blue)](./substrate/README.md#LICENSE)
