@@ -95,8 +95,10 @@ Windows
 
 ## Step 1: Download SocioChain Installer
 
-•	Visit the official SocioChain website at sociochain.io.
+•	Visit the official SocioChain website at [sociochain.io](https://sociochain.io).
+
 •	Navigate to the "Downloads" section.
+
 •	Click on the Windows download link to download the SocioChain installer.
 
 ## Step 2: Run the Installer
@@ -107,7 +109,48 @@ Windows
 
 • Follow the on-screen instructions to complete the installation.
 
+macOS
 
+**Step 1: Download SocioChain for macOS**
+
+•	Visit the official SocioChain website at [sociochain.io](https://sociochain.io).
+
+•	Go to the "Downloads" section.
+
+•	Click on the macOS download link to download the SocioChain package for macOS.
+
+**Step 2: Install SocioChain**
+
+•	Locate the downloaded package file (e.g., SocioChain.pkg) in your Downloads folder.
+
+•	Double-click on the package file to start the installation process.
+
+•	Follow the installation prompts, and enter your administrator password when prompted.
+
+**Linux**
+
+Step 1: Prerequisites
+
+Before installing SocioChain on Linux, ensure that you have the following dependencies installed:
+
+•	[Rust](https://www.rust-lang.org/tools/install): SocioChain is built with Rust, so you need to install Rust as your programming language.
+
+•	[Substrate Developer Hub](https://substrate.dev/docs/en/knowledgebase/getting-started/installing-substrate): Substrate is the framework used to build SocioChain, and you'll need Substrate tools.
+
+Step 2: Download and Build SocioChain
+
+To install SocioChain, you'll need to build it from the source code. Here are the steps:
+
+•	Clone the SocioChain repository from GitHub:
+
+`git clone (https://github.com/zerocostaiway/Sociochain-blockchain-network.git)
+cd sociochain
+`
+
+•	Build SocioChain using Rust's Cargo:
+
+`cargo build --release
+`
     
 
 
